@@ -1,0 +1,38 @@
+---
+title: "STAT 631 Homework 1"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 08/27/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+```{r}
+dat = read.csv("Stock_bond.csv", header = TRUE)
+head(dat)
+tail(dat)
+```
+
+```{r}
+names(dat)
+attach(dat)
+```
+
+```{r}
+par(mfrow = c(1, 2))
+plot(GM_AC)
+plot(F_AC)
+```
+
+```{r}
+plot(GM_AC, type = "l")
+```
+
+```{r}
+plot(GM_AC, type = "b")
+```
