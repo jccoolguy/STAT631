@@ -1,0 +1,159 @@
+---
+title: "STAT 631 Lab 1"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 08/27/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+```{r}
+dat = read.csv("Stock_bond.csv", header = TRUE)
+head(dat)
+tail(dat)
+```
+
+```{r}
+names(dat)
+attach(dat)
+```
+
+```{r}
+par(mfrow = c(1, 2))
+plot(GM_AC)
+plot(F_AC)
+```
+
+```{r}
+plot(GM_AC, type = "l")
+```
+
+```{r}
+plot(GM_AC, type = "b")
+```
+
+```{r}
+n = dim(dat)[1]
+GMReturn = GM_AC[-1]/GM_AC[-n] - 1
+FReturn = F_AC[-1]/ F_AC[-n] - 1
+par(mfrow = c(1, 1))
+plot(GMReturn, FReturn)
+```
+
+Problem 1:
+
+Do the GM and Ford returns seem positively correlated? Do you notice any outlying returns? If \"yes,\" do outlying GM returns seem to occur with outlying Ford returns?
+
+Yes GM and Ford returns appear to be positively correlated. Outlying returns for GM also seem to occur with outlying Ford returns as well.
+
+Problem 2:
+
+Compute the log returns for GM and plot the returns versus the log returns. How highly correlated are the two types of returns? (The R function cor() computes correlations.)
+
+```{r}
+GM_returns <- diff(GM_AC)
+GM_log_returns <- diff(log(GM_AC))
+plot(GM_returns, GM_log_returns)
+```
+
+```{r}
+cor(GM_returns, GM_log_returns)
+```
+
+The two returns appear to be very highly correlated, with a correlation $\rho=0.9137$.
+
+Problem 3
+
+```{r}
+#Computting Returns
+MSFTReturn = MSFT_AC[-1] / MSFT_AC[-n] - 1
+MRKReturn = MRK_AC[-1] / MRK_AC[-n] - 1
+```
+
+```{r}
+par(mfrow = c(1, 2))
+
+plot(MSFTReturn, MRKReturn)
+```
+
+```{r}
+cor(MSFTReturn, MRKReturn)
+```
+
+The two returns visually appear to not be highly correlated. Computing correlation shows a slight positive correlation. Outlying returns seem to occur at the same time for both somewhat frequently but not always.
+
+2.4.2 Simulations
+
+```{r}
+niter = 1e5
+below = rep(0, niter)
+set.seed(2009)
+
+for (i in 1:niter)
+{
+  r = rnorm(45, mean = 0.05/253,
+            sd = 0.23/sqrt(253))
+  logPrice = log(1e6) + cumsum(r)
+  minlogP = min(logPrice) # minimum price over next 45 days
+  below[i] = as.numeric(minlogP < log(950000))
+}
+mean(below)
+```
+
+Problem 4 What is the probability that the value of the stock will be below \$950,000 at the close of at least one of the next 45 trading days? To answer this question, run the code below.
+
+Using our simulation we get an estimate of 0.50988 as the probability of the stock being below \$950,000 in one of the next 45 trading days.
+
+```{r}
+niter = 1e5
+final_stock_value = rep(0, niter)
+day_return_earned = rep(0, niter)
+set.seed(2009)
+
+for (i in 1:niter)
+{
+  r = rnorm(100, mean = 0.05/253,
+            sd = 0.23/sqrt(253))
+  logPrice = log(1e6) + cumsum(r)
+  upper = ifelse(logPrice > 1100000, yes = 1, no = 0)
+  lower = ifelse(logPrice < 950000, yes = 1, no = 0)
+  if(sum(upper) > 1){
+  upper_day = min(which(upper == 1))
+  }
+  if(sum(lower) > 1){
+  lower_day = min(which(lower == 1))
+  }
+  
+  if(sum(upper) == 0 & sum(lower) == 0){
+    final_stock_value[i] = logPrice[length(logPrice)]
+    day_return_earned[i] = 100
+  } else if(sum(upper) > 0 & sum(lower) == 0){
+    final_stock_value[i] = logPrice[upper_day]
+    day_return_earned[i] = upper_day
+  } else if(sum(upper) == 0 & sum(lower) > 0){
+    final_stock_value[i] = logPrice[lower_day]
+    day_return_earned[i] = lower_day
+  } else{
+    which_first = upper_day < lower_day
+    if(which_first){
+    final_stock_value[i] = logPrice[upper_day]
+    day_return_earned[i] = upper_day
+    } else{
+    final_stock_value[i] = logPrice[lower_day]
+    day_return_earned[i] = lower_day
+    }
+  }
+}
+```
+
+Problem 5 What is the probability that the hedge fund will make a profit of at least \$100,000?
+
+```{r}
+large_profit_chance <- (sum(final_stock_value > log(1100000)))/niter
+large_profit_chance
+```
