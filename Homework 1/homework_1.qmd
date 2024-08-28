@@ -49,23 +49,57 @@ head(logReturn)
 
 ```{r}
 #Simulation of situation
-niter = 1e5
+niter = 10000
 set.seed(2015)
 outcome = rep(0, niter)
-outcome2 = rep(0, niter)
 
 for(i in (1:niter)){
   logr = rnorm(20, mean = mean(logReturn), sd = sd(logReturn))
   price = 93.07*exp(cumsum(logr))
-  outcome[i] = ifelse(sum(price < 84.5) > 1, 125, -1)
-  ind = (min(price) < 84.5)
-  outcome2[i] = 125*ind - (1 - ind)
+  
+  #Boolean with check to see if price went under 84.5
+  outcome[i] = ifelse(sum(price < 84.5) >= 1, 125, -1)
+  
 }
 ```
 
 ```{r}
 #Expected Value from Bet
-ev <- sum(outcome)/niter
-ev2 <- sum(outcome2)/niter
-c(ev,ev2)
+ev <- mean(outcome)
+lower <- ev - sqrt(ev*(1-ev)/niter)*qnorm(0.975)
+upper <- ev + sqrt(ev*(1-ev)/niter)*qnorm(0.975)
+ev
+c(lower,upper)
+```
+
+```{r}
+niter = 10000
+value = matrix(niter)
+set.seed(2015)
+for (i in 1:niter)
+{
+logR = rnorm(20,mean = mean(logReturn),sd = sd(logReturn))
+prices = 93.07 * exp(cumsum(logR))
+ind = (min(prices) < 85)
+value[i] = 100*ind - (1 - ind)
+}
+
+mu = mean(value)
+s = sqrt((sum((value - mu)^2))/(niter - 1))
+```
+
+```{r}
+niter = 10000
+value = matrix(niter)
+set.seed(2015)
+for (i in 1:niter)
+{
+logR = rnorm(20,mean = mean(logReturn),sd = sd(logReturn))
+prices = 93.07 * exp(cumsum(logR))
+ind = (min(prices) < 84.5)
+value[i] = 125*ind - (1 - ind)
+}
+mu = mean(value)
+s = sqrt((sum((value - mu)^2))/(niter - 1))
+
 ```
