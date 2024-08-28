@@ -58,14 +58,14 @@ for(i in (1:niter)){
   logr = rnorm(20, mean = mean(logReturn), sd = sd(logReturn))
   price = 93.07*exp(cumsum(logr))
   outcome[i] = ifelse(sum(price < 84.5) > 1, 125, -1)
-  ind = (min(price) < 85)
-  outcome2[i] = 100*ind - (1 - ind)
+  ind = (min(price) < 84.5)
+  outcome2[i] = 125*ind - (1 - ind)
 }
 ```
 
 ```{r}
 #Expected Value from Bet
 ev <- sum(outcome)/niter
-ev2 <- sum(outcome)/niter
+ev2 <- sum(outcome2)/niter
 c(ev,ev2)
 ```
