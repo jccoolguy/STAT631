@@ -25,14 +25,47 @@ for (i in (1:9)){
 }
 ```
 
-Problem 9) In this simulation, what are the mean and standard deviation of the log-returns for 1 year?
+Problem 9)
 
 We are generating the daily log-return data by using a normal distribution with parameters $\mu=\frac{0.05}{253}$ and $\sigma=\frac{0.2}{\sqrt{253}}$. Thus for a one year period (with 253 trading days) the mean of the log-return is $\mu t=\frac{0.05}{253}(253)=0.05$ and the standard deviation is $\sigma\sqrt{t}=\frac{0.2}{\sqrt{253}}(\sqrt{253})=0.2$.
 
-Problem 10) Discuss how the price series appear to have momentum. Is the appearance of momentum real or an illusion.
+Problem 10)
 
 We can see many clumps of time where it appears positive (negative) returns are followed by positive (negative) returns. In this case we are sure that this appearance of momentum is an illusion since we generated this simulation with i.i.d log-returns. In other words each day's return was independent and was not impacted by the previous days.
 
-Problem 11) Explain what the code c(120, 120\*exp(cumsum(logr))) does.
+Problem 11)
 
 First we have the c() function which serves to concatenate vectors. Its first entry is the initial price of the asset, 120. Its second entry is a bit more involved. The variable logr has each days generated log return. The cumsum function creates a cumulative summation of the vector logr. This allows us to track the log return as it moves over time. We take constant $e$ and raise it by the cumulative log return to bring us back to the cumulative return. We then multiply by 120 to get the prices for each day.
+
+2\.
+
+Problem 17)\
+
+```{r}
+data = read.csv('MCD_PriceDaily.csv')
+logReturn = diff(log(data[,"Adj.Close"]))
+head(logReturn)
+```
+
+```{r}
+#Simulation of situation
+niter = 1e5
+set.seed(2015)
+outcome = rep(0, niter)
+outcome2 = rep(0, niter)
+
+for(i in (1:niter)){
+  logr = rnorm(20, mean = mean(logReturn), sd = sd(logReturn))
+  price = 93.07*exp(cumsum(logr))
+  outcome[i] = ifelse(sum(price < 84.5) > 1, 125, -1)
+  ind = (min(price) < 85)
+  outcome2[i] = 100*ind - (1 - ind)
+}
+```
+
+```{r}
+#Expected Value from Bet
+ev <- sum(outcome)/niter
+ev2 <- sum(outcome)/niter
+c(ev,ev2)
+```
