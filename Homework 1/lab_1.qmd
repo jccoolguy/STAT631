@@ -47,7 +47,7 @@ plot(GMReturn, FReturn)
 
 Problem 1:
 
-Do the GM and Ford returns seem positively correlated? Do you notice any outlying returns? If \"yes,\" do outlying GM returns seem to occur with outlying Ford returns?
+Do the GM and Ford returns seem positively correlated? Do you notice any outlying returns? If "yes," do outlying GM returns seem to occur with outlying Ford returns?
 
 Yes GM and Ford returns appear to be positively correlated. Outlying returns for GM also seem to occur with outlying Ford returns as well.
 
