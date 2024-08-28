@@ -120,8 +120,8 @@ for (i in 1:niter)
   r = rnorm(100, mean = 0.05/253,
             sd = 0.23/sqrt(253))
   logPrice = log(1e6) + cumsum(r)
-  upper = ifelse(logPrice > 1100000, yes = 1, no = 0)
-  lower = ifelse(logPrice < 950000, yes = 1, no = 0)
+  upper = ifelse(logPrice > log(1100000), yes = 1, no = 0)
+  lower = ifelse(logPrice < log(950000), yes = 1, no = 0)
   if(sum(upper) > 1){
   upper_day = min(which(upper == 1))
   }
@@ -156,4 +156,34 @@ Problem 5 What is the probability that the hedge fund will make a profit of at l
 ```{r}
 large_profit_chance <- (sum(final_stock_value > log(1100000)))/niter
 large_profit_chance
+```
+
+There is a 37.2% chance that the hedge fund will make a profit of at least \$100,000.
+
+Problem 6 What is the probability the hedge fund will suffer a loss?
+
+```{r}
+loss_probability <- (sum(final_stock_value < log(1000000)))/niter
+loss_probability
+```
+
+The loss probability of this strategy is 58.3%.
+
+Problem 7 What is the expected profit from this trading strategy?
+
+```{r}
+expected_profit <- sum(final_stock_value - log(1000000))/niter
+exp(expected_profit)
+```
+
+The expected profit of this strategy is 1 dollar.
+
+Problem 8
+
+What is the expected return? When answering this question, remember that only \$50,000 was invested. Also, the units of return are time, e.g., one can express a return as a daily return or a weekly return. Therefore, one must keep track of how long the hedge fund holds its position before selling.
+
+```{r}
+expected_daily_return <- (sum((final_stock_value - log(1000000))/day_return_earned))
+exp(expected_daily_return)
+exp(expected_daily_return)*30
 ```
