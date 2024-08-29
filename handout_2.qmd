@@ -1,0 +1,17 @@
+---
+title: "STAT 631 Handout 2"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 08/29/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+```{r}
+
+```
