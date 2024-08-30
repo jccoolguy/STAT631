@@ -111,7 +111,7 @@ chance
 
 There is a probability of `r round(chance,3)` that this investment will be worth less than \$990 after 5 trading days.
 
-3\)
+4\)
 
 Given $P_1=95,P_2=103,P_3=98$. We need to find $r_3(2)$.
 
@@ -129,3 +129,42 @@ r_3_2
 ```
 
 $r_3(2)$=`r round(r_3_2,5)`.
+
+```{r warning=FALSE}
+#Generating Symbols
+library(quantmod)
+getSymbols(Symbols = c("^GSPC","CVX","AMZN"), 
+           from = "2005-01-01", to = "2024-08-01", )
+```
+
+```{r}
+#Getting Adjusted Close
+SnP_500_AC <- GSPC[, "GSPC.Adjusted"]
+Chevron_AC <- CVX[, "CVX.Adjusted"]
+Amazon_AC <- AMZN[, "AMZN.Adjusted"]
+```
+
+```{r}
+#Getting daily log return
+SnP_500_dlr <- dailyReturn(SnP_500_AC, type = "log")
+Chevron_dlr <- dailyReturn(Chevron_AC, type = "log")
+Amazon_dlr <- dailyReturn(Amazon_AC, type = "log")
+```
+
+5\.
+
+```{r fig.width=7 fig.asp = 1}
+par(mfcol = c(2,1))
+plot(SnP_500_AC["2018-01-01::2024-8-01"], main = "GSPC Stock Price")
+plot(SnP_500_dlr["2018-01-01::2024-8-01"], main = "GSPC Daily Log Return")
+```
+
+One of the first major events in this time period was the sell off at the end of 2018. That December there were a few factors that drove volatility, most importantly in my opinion was a concern about the stability of the economy as the FED continued raising rates and reducing their balance sheet after a mediocre November 2018 jobs report. Another factor that drove a lot of volatility throughout 2018, and much of the Trump presidency, were the trade and tariff negotiations with China. There was a ton of action and counteraction between the US and China, tariffs and counter-tariffs would hit the news, or be tweeted directly from Trump himself, and cause a flurry of trading action. The reason I believe the overall economic condition concerns were the primary cause of the sell-off is because on December 1st 2018 the US and China agreed on a 90-day halt to new tariffs, seeming to indicate some positive traction on a trade deal. But it would remiss to not believe it was a combination of the two.
+
+In August of 2019 there was a lot volatility despite a lack of direction on the month, this was mainly due to trade tensions between the US and China and a yield reversion in the bond market causing some recessionary fears. On August 5th Trump had accused China of currency manipulation after the yuan steeply fell in value, that day the S&P 500 dropped about 3% fearing a ignition in the trade war.
+
+In Match of 2020 there was COVID-19. A historic amount of uncertainty was present in the market as investors debated how it would affect the global economy. Ultimately the recovery after the sell-off was rather steep.
+
+Throughout 2022 and 2023 the market faced what appeared to be runaway inflation with CPI peaking at 9.1% and a new conflict as Russia invaded Ukraine. The ascent of inflation at this time forced the reluctant FED into action to begin raising rates. The FED had been consistent about the theory that inflation was transitory, a temporary blip in prices due to COVID supply chain disruption. However as 2022 progressed and the CPI kept hitting new highs the FED had to begin raising the Federal Funds rate, with 11 hikes between March of 2022 and July of 2023. The federal funds target went from 0-.25% to 5.25-5.50% in that time. At the same time the Russian invasion of Ukraine heightened the risk of a global conflict and lead to a realignment in the global economy as west powers began placing embargoes on Russia. The S&P would sell off and recover in 2023 and 2024.
+
+Most recently there was a large amount of volatility at the start of August 2024. Part of the concern was a bad job report for July, raising concerns that a weakened job market would wreck the soft landing the FED has been striving for. Another aspect was a rate hike in Japan, the first since 2007, and an indication that there may be more hawkish actions to come. There was a large amount of institutions executing the "yen carry trade". The trader would borrow yen for an extremely low interest rate and buy, for instance, a treasury bill in the US paying north of 5%. The trader faces foreign exchange risk in this transaction, if the value of the yen appreciates relative to the dollar the amount of yen they have to pay back becomes more expensive to buy. The unwinding of this transaction arguably caused a lot of volatility in these couple of days.
