@@ -134,7 +134,7 @@ $r_3(2)$=`r round(r_3_2,5)`.
 #Generating Symbols
 library(quantmod)
 getSymbols(Symbols = c("^GSPC","CVX","AMZN"), 
-           from = "2005-01-01", to = "2024-08-01", )
+           from = "2005-01-01", to = "2024-08-01")
 ```
 
 ```{r}
@@ -218,9 +218,9 @@ a\)
 
 ```{r fig.height= 10, fig.width= 10}
 CVX_returns <- list(
-  daily = dailyReturn(Ad(CVX), leading = "F", type = "log"),
-  weekly = weeklyReturn(Ad(CVX), leading = "F", type = "log"),
-  monthly = monthlyReturn(Ad(CVX), leading = "F", type = "log")
+  daily = dailyReturn(Ad(CVX), type = "log"),
+  weekly = weeklyReturn(Ad(CVX), type = "log"),
+  monthly = monthlyReturn(Ad(CVX), type = "log")
 )
 
 par(mfcol = c(2,3))
@@ -240,4 +240,123 @@ for(i in  1:3 ){
 
 b\)
 
-In the daily log return quantile we can see the longer tails in the sample quantile when compared to the standard normal. This effect dissipates somewhat as the time of return gets larger and return data becomes more linear in shape but even for a monthly return the normal distribution does not fit the data well.
+In the daily log return quantile we can see the long and fat tails in the sample quantile when compared to the standard normal. As the time of return gets larger we the tails get less fat but still maintaining too many outliers to be well fit by a normal distribution.
+
+We can also see that each distribution has a left skew although it becomes less severe in the monthly returns.
+
+c\)
+
+```{r}
+#Defining functions to compute skewness and kurtosis
+Sk.fun <- function(x) { ## function to compute skewness
+mean((x-mean(x))^3/sd(x)^3)
+}
+Kur.fun <- function(x){ ## function to compute kurtosis
+mean((x-mean(x))^4/sd(x)^4)
+}
+```
+
+```{r}
+daily_skewness <- Sk.fun(CVX_returns[[1]])
+daily_kurtosis <- Kur.fun(CVX_returns[[1]])
+daily_shapiro_wilk <- shapiro.test((as.numeric(CVX_returns[[1]])))
+
+weekly_skewness <- Sk.fun(as.numeric(CVX_returns[[2]]))
+weekly_kurtosis <- Kur.fun(as.numeric(CVX_returns[[2]]))
+weekly_shapiro_wilk <- shapiro.test(as.numeric(CVX_returns[[2]]))
+
+monthly_skewness <- Sk.fun(as.numeric(CVX_returns[[3]]))
+monthly_kurtosis <- Kur.fun(as.numeric(CVX_returns[[3]]))
+monthly_shapiro_wilk <- shapiro.test(as.numeric(CVX_returns[[3]]))
+
+paste("Daily statistics: Skewness:",daily_skewness,"Kurtosis:",daily_kurtosis)
+daily_shapiro_wilk
+
+paste("Weekly statistics: Skewness:",weekly_skewness,"Kurtosis:",weekly_kurtosis)
+weekly_shapiro_wilk
+
+paste("Monthly statistics: Skewness:",monthly_skewness,"Kurtosis:",
+      monthly_kurtosis)
+monthly_shapiro_wilk
+```
+
+The Shapiro-Wilk normality tests the following hypothesis with $H_0=Normaility$ and $H_1=Non-Normality$ its test statistic is the correlation between the sample quantile and the theoretical normal quantile.
+
+As the period of return gets larger we can see the test statistic for the Shapiro Wilk test get larger, going from 0.87 for daily returns to 0.97 for monthly returns, the fit of the normal distribution gets better as more return data is grouped. Despite, this the hypothesis of normality is rejected for each period, agreeing with our visual inspection of the normal qq-plots.
+
+The skewness of the graph is moderately left skewed in the daily and weekly return and is close to unskewed in the monthly return reflecting some asymmetry in returns.
+
+The kurtosis statistic gives us information that is harder to see in the histograms. We see extreme kurtosis in the daily return a measure of 24.69, far greater than the normal distributions kurtosis of 3. This indicates a lot of the weight in the data is in the center and tails. We can also see the kurtosis approach 3 as the period of return gets larger, with monthly return's kurtosis being 4.69. This reflects the principle of aggregational gaussianity in financial return data.
+
+7\)
+
+```{r fig.width=10,fig.height=10}
+n = length(SnP_500_dlr)
+q_grid = (1:n) / (n + 1)
+df_grid = 2:7
+par(mfrow = c(3,2))
+for(i in 1:6){
+ qqplot(y = as.numeric(SnP_500_dlr), x = qt(q_grid,df_grid[i]),
+ main = paste("S&P 500 Normal QQ", ", df = ", df_grid[i]), 
+ xlab = "Theoretical Quantiles", ylab = "Sample Quantiles")
+  abline(lm(quantile(SnP_500_dlr, c(0.25, 0.75)) ~ 
+             qt(c(0.25, 0.75), df = df_grid[i])))
+}
+```
+
+Problem 4)
+
+The code q.grid = (1:n) / (n + 1) creates an evenly spaced out vector of length n that avoids inputs of probability 0 and 1. The limit as p approaches 0 equals negative infinity, similarly the limit as p approaches 1 equals infinity. If we don't make this adjustment and just equally spaced q.grid from 0 to 1 it would both the graph by making our x axis way too large and it would be unreadable.
+
+The code qt(q.grid, df = df\[j\]) (in my code qt(q_grid,df_grid\[i\])) computes the quantiles of the t distribution using the probability inputs of q.grid with a different degree of freedom from the vector df_grid with each loop.
+
+Problem 5)
+
+The best fitting distribution is the t distribution with degrees of freedom equal to 3. The data closely follows the fitted line with only slight deviation at the tails. The other choices of degrees of freedom have clear issues in the tails with many fatter and longer than the theoretical distribution.
+
+Problem 6)
+
+```{r}
+library("fGarch")
+x=seq(-0.1, 0.1,by = 0.001)
+par(mfrow = c(1, 1))
+df = 3
+mad_t = mad(SnP_500_dlr, 
+            constant = sqrt(df / (df- 2)) / qt(0.75, df))
+plot(density(SnP_500_dlr), lwd = 2, ylim = c(0, 60))
+lines(x, dstd(x, mean = mean(SnP_500_dlr), sd = mad_t, nu = df),
+ lty = 5, lwd = 2, col = "red")
+lines(x, dnorm(x, mean = mean(SnP_500_dlr), sd = sd(SnP_500_dlr)),
+ lty = 3, lwd = 4, col = "blue")
+legend("topleft", c("KDE", paste("t: df = ",df), "normal"),
+ lwd = c(2, 2, 4), lty = c(1, 5, 3),
+ col = c("black", "red", "blue"))
+```
+
+```{r}
+par(mfrow = c(1,2))
+
+plot(density(SnP_500_dlr), lwd = 2, ylim = c(0, 1), xlim = c(-.1, -0.03),
+     main = "Left Tail")
+lines(x, dstd(x, mean = mean(SnP_500_dlr), sd = mad_t, nu = df),
+ lty = 5, lwd = 2, col = "red")
+lines(x, dnorm(x, mean = mean(SnP_500_dlr), sd = sd(SnP_500_dlr)),
+ lty = 3, lwd = 4, col = "blue")
+legend("topleft", c("KDE", paste("t: df = ",df), "normal"),
+ lwd = c(2, 2, 4), lty = c(1, 5, 3),
+ col = c("black", "red", "blue"))
+
+plot(density(SnP_500_dlr), lwd = 2, ylim = c(0, 1), xlim = c(0.03, 0.1),
+     main = "Right tail")
+lines(x, dstd(x, mean = mean(SnP_500_dlr), sd = mad_t, nu = df),
+ lty = 5, lwd = 2, col = "red")
+lines(x, dnorm(x, mean = mean(SnP_500_dlr), sd = sd(SnP_500_dlr)),
+ lty = 3, lwd = 4, col = "blue")
+legend("topleft", c("KDE", paste("t: df = ",df), "normal"),
+ lwd = c(2, 2, 4), lty = c(1, 5, 3),
+ col = c("black", "red", "blue"))
+```
+
+The t distribution with degrees of freedom of 3 does a great job of fitting the return data. Looking at the center of the distribution we can see how closely it follows the peak of the density estimate. In the tails, we are very zoomed in so we can see many peaks and valleys of the KDE but the t distribution does pretty well here too.
+
+The normal distribution on the other hand does a very poor job. The peak is far lower than the KDE and the density dissipates in the tail far earlier than the return data.
