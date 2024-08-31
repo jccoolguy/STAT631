@@ -130,7 +130,7 @@ r_3_2
 
 $r_3(2)$=`r round(r_3_2,5)`.
 
-```{r warning=FALSE}
+```{r message=FALSE, warning=FALSE}
 #Generating Symbols
 library(quantmod)
 getSymbols(Symbols = c("^GSPC","CVX","AMZN"), 
@@ -153,8 +153,9 @@ Amazon_dlr <- dailyReturn(Amazon_AC, type = "log")
 
 5\.
 
-```{r fig.width=7 fig.asp = 1}
-par(mfcol = c(2,1))
+a\)
+
+```{r}
 plot(SnP_500_AC["2018-01-01::2024-8-01"], main = "GSPC Stock Price")
 plot(SnP_500_dlr["2018-01-01::2024-8-01"], main = "GSPC Daily Log Return")
 ```
@@ -167,4 +168,76 @@ In Match of 2020 there was COVID-19. A historic amount of uncertainty was presen
 
 Throughout 2022 and 2023 the market faced what appeared to be runaway inflation with CPI peaking at 9.1% and a new conflict as Russia invaded Ukraine. The ascent of inflation at this time forced the reluctant FED into action to begin raising rates. The FED had been consistent about the theory that inflation was transitory, a temporary blip in prices due to COVID supply chain disruption. However as 2022 progressed and the CPI kept hitting new highs the FED had to begin raising the Federal Funds rate, with 11 hikes between March of 2022 and July of 2023. The federal funds target went from 0-.25% to 5.25-5.50% in that time. At the same time the Russian invasion of Ukraine heightened the risk of a global conflict and lead to a realignment in the global economy as west powers began placing embargoes on Russia. The S&P would sell off and recover in 2023 and 2024.
 
-Most recently there was a large amount of volatility at the start of August 2024. Part of the concern was a bad job report for July, raising concerns that a weakened job market would wreck the soft landing the FED has been striving for. Another aspect was a rate hike in Japan, the first since 2007, and an indication that there may be more hawkish actions to come. There was a large amount of institutions executing the "yen carry trade". The trader would borrow yen for an extremely low interest rate and buy, for instance, a treasury bill in the US paying north of 5%. The trader faces foreign exchange risk in this transaction, if the value of the yen appreciates relative to the dollar the amount of yen they have to pay back becomes more expensive to buy. The unwinding of this transaction arguably caused a lot of volatility in these couple of days.
+Most recently there was a large amount of volatility at the start of August 2024. Part of the concern was a bad job report for July, raising concerns that a weakened job market would wreck the soft landing the FED has been striving for. Another aspect was a rate hike in Japan, the first since 2007, and an indication that there may be more hawkish actions to come. There was a large amount of institutions executing the "yen carry trade". The trader would borrow yen for an extremely low interest rate and buy, for instance, a treasury bill in the US paying north of 5%. The trader faces foreign exchange risk in this transaction, if the value of the yen appreciates relative to the dollar the amount of yen they have to pay back becomes more expensive to buy. After the actions taken by the central back in Japan the unwinding of this transaction arguably caused a lot of volatility in these couple of days.
+
+b\)
+
+```{r warning=FALSE, message=FALSE}
+library(tidyverse)
+stock_data <- data.frame(
+  date = index(GSPC),
+  SnP_500_AD = as.numeric(GSPC[, "GSPC.Adjusted"]),
+  Chevron_AD = as.numeric(CVX[, "CVX.Adjusted"]),
+  Amazon_AD = as.numeric(AMZN[, "AMZN.Adjusted"]),
+  SnP_500_dlr = as.numeric(dailyReturn(Ad(GSPC), type = "log")),
+  Chevron_dlr = as.numeric(dailyReturn(Ad(CVX), type = "log")),
+  Amazon_dlr = as.numeric(dailyReturn(Ad(AMZN)), type = "log")
+)
+```
+
+```{r}
+library(tidyverse)
+colors <- c("AMZN" = "#ff9900", "CVX" = "#0050AA")
+
+stock_data |>
+  filter(date > "2018-01-01") |> 
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = Chevron_AD, color = "CVX")) +
+  geom_line(aes(y = Amazon_AD, color = "AMZN")) +
+  labs(title = "CVX and AMZN Stock Prices", x = "Date", y = "price", 
+       color = "Legend") +
+  scale_color_manual(values = colors)
+```
+
+```{r}
+stock_data |>
+  filter(date > "2018-01-01") |> 
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = Chevron_dlr, color = "CVX")) +
+  geom_line(aes(y = Amazon_dlr, color = "AMZN"), alpha = 0.8) +
+  labs(title = "CVX and AMZN Daily Log Return", x = "Date", y = "Log Return", 
+       color = "Legend") +
+  scale_color_manual(values = colors)
+```
+
+The most striking impact to compare these two stocks is their performance in the COVID pandemic. Just by taking a look at the daily log return graph we can see the huge volatility at the start of the pandemic for Chevron while Amazon's was much more muted compared to Chevron and the overall market. Chevron is an energy corporation who fracks and produces oil and gas, and naturally is very exposed to the demand shrinking as it did under lock-downs in the early pandemic. Amazon on the other hand thrived in the lock-down era as many consumers preferred to order their essentials online instead of venturing into a store.
+
+6\)
+
+a\)
+
+```{r fig.height= 10, fig.width= 10}
+CVX_returns <- list(
+  daily = dailyReturn(Ad(CVX), leading = "F", type = "log"),
+  weekly = weeklyReturn(Ad(CVX), leading = "F", type = "log"),
+  monthly = monthlyReturn(Ad(CVX), leading = "F", type = "log")
+)
+
+par(mfcol = c(2,3))
+
+for(i in  1:3 ){
+  #Generating Histogram
+  hist(CVX_returns[[i]], breaks = "scott", 
+       main = paste("Histogram of", names(CVX_returns)[i],"log return"),
+       xlab = "CVX Return")
+  #Generating qq plot
+  qqnorm(CVX_returns[[i]],
+         main = paste("Normal Q-Q Plot",names(CVX_returns)[i],"log return"))
+  qqline(CVX_returns[[i]])
+}
+
+```
+
+b\)
+
+In the daily log return quantile we can see the longer tails in the sample quantile when compared to the standard normal. This effect dissipates somewhat as the time of return gets larger and return data becomes more linear in shape but even for a monthly return the normal distribution does not fit the data well.
