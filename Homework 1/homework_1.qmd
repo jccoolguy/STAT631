@@ -155,7 +155,7 @@ Amazon_dlr <- dailyReturn(Amazon_AC, type = "log")
 
 a\)
 
-```{r}
+```{r fig.height= 6}
 plot(SnP_500_AC["2018-01-01::2024-8-01"], main = "GSPC Stock Price")
 plot(SnP_500_dlr["2018-01-01::2024-8-01"], main = "GSPC Daily Log Return")
 ```
@@ -210,7 +210,7 @@ stock_data |>
   scale_color_manual(values = colors)
 ```
 
-The most striking impact to compare these two stocks is their performance in the COVID pandemic. Just by taking a look at the daily log return graph we can see the huge volatility at the start of the pandemic for Chevron while Amazon's was much more muted compared to Chevron and the overall market. Chevron is an energy corporation who fracks and produces oil and gas, and naturally is very exposed to the demand shrinking as it did under lock-downs in the early pandemic. Amazon on the other hand thrived in the lock-down era as many consumers preferred to order their essentials online instead of venturing into a store.
+The most striking impact to compare these two stocks is their performance in the COVID pandemic. Just by taking a look at the daily log return graph we can see the huge volatility at the start of the pandemic for Chevron while Amazon's was much more muted compared to Chevron and the overall market. Chevron is an energy corporation and is very exposed to demand for oil and gas collapsing as it did under lock-downs at the beginning of the pandemic. Amazon on the other hand thrived in the lock-down era as many consumers preferred to order their essentials online instead of venturing into a store.
 
 6\)
 
@@ -306,7 +306,7 @@ for(i in 1:6){
 
 Problem 4)
 
-The code q.grid = (1:n) / (n + 1) creates an evenly spaced out vector of length n that avoids inputs of probability 0 and 1. The limit as p approaches 0 equals negative infinity, similarly the limit as p approaches 1 equals infinity. If we don't make this adjustment and just equally spaced q.grid from 0 to 1 it would both the graph by making our x axis way too large and it would be unreadable.
+The code q.grid = (1:n) / (n + 1) creates an evenly spaced out vector of length n that avoids inputs of probability 0 and 1. The limit as p approaches 0 equals negative infinity, similarly the limit as p approaches 1 equals infinity. If we don't make this adjustment and just equally spaced q.grid from 0 to 1 it would extend the x axis too far making the graph unreadable.
 
 The code qt(q.grid, df = df\[j\]) (in my code qt(q_grid,df_grid\[i\])) computes the quantiles of the t distribution using the probability inputs of q.grid with a different degree of freedom from the vector df_grid with each loop.
 
