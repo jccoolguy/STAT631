@@ -5,9 +5,11 @@ date: 09/03/2024
 date-format: short
 format:
   pdf:
-    documentclass: scrartcl
-    papersize: letter
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
 editor: visual
+engine: knitr
 ---
 
 1\)
