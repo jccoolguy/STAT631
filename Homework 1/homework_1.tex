@@ -115,7 +115,6 @@
 \def\fps@figure{htbp}
 \makeatother
 
-\usepackage{amsmath}
 \KOMAoption{captions}{tableheading}
 \makeatletter
 \makeatother
@@ -190,7 +189,7 @@
 
 \begin{document}
 \maketitle
-\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[borderline west={3pt}{0pt}{shadecolor}, enhanced, sharp corners, interior hidden, frame hidden, boxrule=0pt, breakable]}{\end{tcolorbox}}\fi
+\ifdefined\Shaded\renewenvironment{Shaded}{\begin{tcolorbox}[enhanced, frame hidden, interior hidden, boxrule=0pt, sharp corners, borderline west={3pt}{0pt}{shadecolor}, breakable]}{\end{tcolorbox}}\fi
 
 1)
 
@@ -660,7 +659,7 @@ c)
 \end{Shaded}
 
 \begin{verbatim}
-[1] "Daily statistics: Skewness: -0.506884204015888 Kurtosis: 24.6939389714861"
+[1] "Daily statistics: Skewness: -0.506889947839685 Kurtosis: 24.6939765502567"
 \end{verbatim}
 
 \begin{Shaded}
@@ -684,7 +683,7 @@ W = 0.87278, p-value < 2.2e-16
 \end{Shaded}
 
 \begin{verbatim}
-[1] "Weekly statistics: Skewness: -1.42259796733426 Kurtosis: 15.7761560268946"
+[1] "Weekly statistics: Skewness: -1.42259829572471 Kurtosis: 15.7761809790893"
 \end{verbatim}
 
 \begin{Shaded}
@@ -709,7 +708,7 @@ W = 0.90397, p-value < 2.2e-16
 \end{Shaded}
 
 \begin{verbatim}
-[1] "Monthly statistics: Skewness: -0.0355891766527548 Kurtosis: 4.69414203147567"
+[1] "Monthly statistics: Skewness: -0.0355882200633145 Kurtosis: 4.69414592653744"
 \end{verbatim}
 
 \begin{Shaded}
