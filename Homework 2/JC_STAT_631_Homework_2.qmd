@@ -64,7 +64,7 @@ $$
 
 Where $f_1(x)$ is the density function of $N(0,1)$ and $f_2(x)=N(0,10)$.
 
-A helpful fact for this problem is that $\mu^{(k)}=\sum_{i=1}^np_iE_{f_i}[x_i^{k}]$.Essentially when we are computing a moment we can compute each distributions's moment, multiply them by their weight, and sum them together.
+A helpful fact for this problem is that $\mu^{(k)}=\sum_{i=1}^np_iE_{f_i}[x_i^{k}]$.Essentially when we are computing a moment we can compute each distribution's moment, multiply them by their weight, and sum them together.
 
 This leads to $f(x)$ having $\sigma^2=p_1\sigma_1^2+p_2\sigma_2^2=.9(1)+.1(10)=1.9$. And $E[(x-\mu)^4]=p_1E_{f_1}[(x-\mu_1)^4]+p_2Ef_2[(x-\mu_2)^4]$. So using what we know about the fourth central moment of the normal distribution we have:
 
@@ -97,3 +97,62 @@ Building off what I worked on in the previous question we have the below after s
 $$
 Kur(p,\sigma)=\frac{3(p+(1-p)\sigma^4)}{(p+(1-p)\sigma^2)^2}
 $$
+
+3\)
+
+```{r message=FALSE}
+library(quantmod)
+```
+
+```{r}
+getSymbols("^GSPC",from = "2005-01-01", to = "2024-08-01")
+x = weeklyReturn(Ad(GSPC),type = "log")*100
+n = dim(x)[1]
+```
+
+a\)
+
+```{r message=FALSE}
+library(rugarch)
+```
+
+```{r}
+dists = c("std", "sstd", "ged", "sged", "nig", "jsu")
+fits = vector("list", 6)
+for (i in 1:6) fits[[i]]  = fitdist(dists[i], x)
+```
+
+b\)
+
+```{r fig.height= 10, fig.width = 10}
+den = density(x, adjust = 0.75)
+x0 = den$x; y0 = den$y
+par(mfrow = c(2,3))
+
+for(i in 1:length(dists)) {
+  plot(x0, y0, type = "l", main = dists[i], ylim = c(0,0.3), xlab = "returns",
+  ylab= "density")
+  est = fits[[i]]$pars
+  yi = ddist(dists[i], x0, mu = est["mu"], sigma = est["sigma"], skew =
+  est["skew"], shape = est["shape"])
+lines(x0, yi, col = "red3")
+}
+
+```
+
+From this first plot we can see that the GED and skewed GED both seem to peak sharper than the kernel density estimate. The GED estimate also appears to struggle in the right shoulder region. The other four estimates fit well in the middle region. Next let's take a look at the left tail region.
+
+```{r fig.height= 10, fig.width = 10}
+par(mfrow = c(2,3))
+
+for(i in 1:length(dists)) {
+  plot(x0, y0, type = "l", main = dists[i], ylim = c(0,0.03), xlim = c(-22,-8), xlab = "returns",
+  ylab= "density")
+  est = fits[[i]]$pars
+  yi = ddist(dists[i], x0, mu = est["mu"], sigma = est["sigma"], skew =
+  est["skew"], shape = est["shape"])
+lines(x0, yi, col = "red3")
+}
+```
+
+Looking at the extreme tail values we can get an idea of how quickly each distributions tail dissipates. We can see that the GED distribution appears to zero out around $x=13$, too early compared to the kernel density estimator. The skewed GED distribution seems to taper a bit later around $x=15$, still too early. The standardized t distribution does well here, it it intercepting around the middle of the kernel density estimator and tapers off completely at around $x=19$. The other three distributions do well but seem to slightly overestimate the density in the $x=8$ to $x=11$ range.
