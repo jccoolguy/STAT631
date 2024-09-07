@@ -1,0 +1,45 @@
+---
+title: "STAT 631 Homework 2"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 09/09/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+## 
+
+1\)
+
+We have function $f^\star(y|\xi)$ below:
+
+$$
+f^\star(y|\xi)=\begin{cases} f(y\xi) & y<0 \\ f(y/\xi) & y \geq0\end{cases}
+$$
+
+We are tasked with integrating $f^{\star}(y|\xi)$:
+
+$$
+\int_{-\infty}^{\infty}f^\star(y|\xi)=\int_{-\infty}^0f(y\xi)dy+\int_0^\infty f(y/\xi)dy
+$$
+
+Let $u=y\xi$ so $du=\xi dy$. Let $w=y/\xi$ so $dw=\frac{1}{\xi}dy$. Then we have:
+
+$$
+\xi\int_{-\infty}^0f(u)du+\xi^{-1}\int_{0}^{\infty}f(w)dw
+$$
+
+$$
+\xi(F(0)-F(-\infty))+\xi^{-1}(F(\infty)-F(0))
+$$
+
+Since $f$ is a symmetric pdf about 0 $F(0)=P(y<0)=1/2$. Also $F(-\infty)=0$ and $F(\infty)=1$ from basic rules about CDFs. Then we have our desired result:
+
+$$
+\xi(1/2-0)+\xi^{-1}(1-1/2)=\frac{1}{2}(\xi+\xi^{-1})
+$$
