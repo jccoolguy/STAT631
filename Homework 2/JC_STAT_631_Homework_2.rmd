@@ -296,19 +296,29 @@ skew_conf_ints
 
 f\)
 
-We are testing for distribution symmetry, if skew = 0 then a distribution is symmetric. Then the hypothesis test is:\
+We are testing for distribution symmetry, if skew = 0 then a distribution is symmetric. The rugarch package uses the F-S skewed t distribution.
 
 $$
-H_0:\text{skew}=0,H_1:\text{skew}\neq0
+f^t(y|\xi)=\frac{2}{\xi+\xi^{-1}}f^\star(y|\xi) \text{ where }f^\star(x)= \text{below}
+$$
+
+$$
+f^\star(y|\xi)=\begin{cases} f(y\xi) & y<0 \\ f(y/\xi) & y \geq0\end{cases}
+$$
+
+With the F-S skewed t distribution when parameter $\xi=1$ skewness is equal to zero. So we can test hypothesis:
+
+$$
+H_0:\xi=1,H_1:\xi\neq1
 $$
 
 We reject $H_0$ if:
 
 $$
-2\{\log(\hat{\theta}_{ML})-\log(\hat{\theta}_{skew=0,ML})\} \geq \chi_{.95,1}
+2\{\log(\hat{\theta}_{ML})-\log(\hat{\theta}_{\xi=1,ML})\} \geq \chi_{.95,1}
 $$
 
-We have already fitted the distribution of the reduced model with skew = 0, it is the standardized t distribution from earlier. So:
+We have already fitted the distribution of the reduced model with $\xi = 1$, as it is simply the standardized t distribution from earlier. So:
 
 ```{r}
 cat("log-likelihoods: \n");c(full = loglik[2], reduced=loglik[1])
@@ -321,4 +331,4 @@ p_value = 1 - pchisq(LRT,df = 1)
 c(LRT.statistic = round(LRT,5), Critical.Value = round(critical_value,5), P.Value = round(p_value,5))
 ```
 
-With the LRT statistic being greater than the critical value $\chi_{.95,1}$ we can reject the null hypothesis of no skewness in the distribution. The evidence suggests that the distribution is skewed.
+With the LRT statistic being greater than the critical value $\chi_{.95,1}$ we can reject the null hypothesis of $\xi=1$ . The evidence suggests that the distribution is skewed.
