@@ -1,0 +1,15 @@
+---
+title: "STAT 631 Homework 3"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 09/16/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+## 
