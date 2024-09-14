@@ -93,7 +93,7 @@ Since $\Sigma$ is diagonal, the variates are independent.
 
 We know there is tail dependence because the two multivariate t -distributions that are generated are identical to each other, only one random pull from the $\chi^2$ distribution is performed.
 
-6\)
+Problem 6)
 
 a\)
 
@@ -142,3 +142,159 @@ quantile_99 <- quantile(x, probs = .99)
 avg_greater <- mean(x[which(x > quantile_99)])
 c(quantile_99,avg_greater)
 ```
+
+2\)
+
+```{r}
+library(quantmod)
+syb = c("GIS","KDP","KO","PG")
+d = length(syb)
+rt = c()
+
+for(i in 1:d){
+  getSymbols(syb[i], from = "2011-01-01", to = "2024-08-31")
+  rt = cbind(rt, weeklyReturn(Ad(get(syb[i])), type = "log")[-1])
+}
+colnames(rt) = syb
+rt = rt*100
+```
+
+a\)
+
+We can create a scatter-plot matrix for these returns.
+
+```{r fig.height= 12, fig.width=12}
+par(mfrow = c(4,4))
+for (i in (1:4)){
+  for (j in (1:4)){
+    plot(x = as.numeric(rt[,i]),y = as.numeric(rt[,j]),main = paste(names(rt)[i],"by",names(rt)[j]),xlab = names(rt)[i],ylab = names(rt)[j])
+  }
+}
+```
+
+The first step of estimating the variance of $.5X_1+.3X_2+.2X_3$ we will create the sample covariance matrix for $X_1,X_2,X_3$.
+
+```{r}
+covariances <- c()
+for(i in 1:3){
+  for(j in 1:3){
+    covariances <- c(covariances, cov(rt[,i],rt[,j]))
+  }
+}
+Sigma <- matrix(covariances, nrow  = 3, ncol = 3)
+Sigma
+
+```
+
+Then we will use the fact that $w^T\Sigma w$ is the variance of the uni-variate t distribution for a portfolio with weights w. In this case $w=\begin{bmatrix} 0.5,0.3,0.2\end{bmatrix}^T$.
+
+```{r}
+w = c(.5,.3,.2)
+variance_est <- t(w) %*% Sigma %*% w
+variance_est
+```
+
+The estimated variance is `r variance_est`.
+
+b\)
+
+The multivariate t distribution is a suitable candidate model for rt because the tails of return data are often longer and fatter than the normal distribution. Additionally in our scatter plot we can see the tail dependence in the pairs of return data. Using the multivariate t distribution also has convenient properties for analyzing a portfolio, it can be shown that given a weight w and a multivariate t distribution of returns that the distribution of the portfolio's return is $t_\nu(w^T\mu,w^T\Lambda w)$. Where $\mu$ and $\Lambda$ are the location vector and scale matrix respectively.
+
+c\)
+
+```{r}
+library(MASS)
+library(mnormt)
+df = seq(2.5, 8, 0.01)
+n = length(df)
+loglik_profile = rep(0,n)
+for(i in 1:n){
+  fit = cov.trob(rt, nu = df[i])
+  mu = as.vector(fit$center)
+  sigma = matrix(fit$cov, nrow = 4)
+  loglik_profile[i] = sum(log(dmt(rt, mean = fit$center,
+                                  S = fit$cov, df = df[i])))
+}
+```
+
+To find the MLE of $\nu$ which degrees of freedom log-likelihood is maximized.
+
+```{r}
+df_mle <- df[which.max(loglik_profile)]
+df_mle
+```
+
+The MLE of $\nu$ is `r df_mle`.
+
+We accept the null hypothesis $H_0:\theta_1=\theta_{0,1}$ if $L_p(\theta_{0,1})>L_P(\hat{\theta}_1)-\frac{1}{2}\chi^2_{\alpha,1}$. Where $\hat{\theta_1}$ is the MLE of $\nu$ that we previously computed. Then our 90% confidence interval is the range of $\nu$ that fail to reject the null hypothesis for each hypothesized value of $\nu$.
+
+```{r}
+critical_value <- max(loglik_profile) - 1/2*qchisq(.90,1)
+lower <- min(df[which(loglik_profile > critical_value)])
+upper <- max(df[which(loglik_profile > critical_value)])
+
+conf_interval <- c(lower,upper)
+names(conf_interval) <- c("lower.90%","upper.90%")
+conf_interval
+```
+
+d\)
+
+AIC and BIC are defined as:
+
+$$
+\text{AIC}=-2\log(\hat{\nu}_{ML})+2p \\ \text{BIC}=-2log(\hat{\nu}_{ML})+p\log(n)
+$$
+
+```{r}
+d = dim(rt)[2]; n = dim(rt)[1]
+p = d*(d+1)/2 + d + 1 
+
+AIC <- -2*max(loglik_profile) + 2*p
+BIC <- -2*max(loglik_profile) + p*log(length(n))
+information_criteria <- c(AIC,BIC)
+names(information_criteria) <- c("AIC","BIC")
+information_criteria
+```
+
+e\)
+
+```{r}
+library(sn)
+fit_st = mst.mple(y = rt)
+names(fit_st)
+fit_st$dp
+
+```
+
+Our estimated $\nu$ is greater than 4, so we use the dp2cp() function to obtain the mean vector, covariance matrix and skewness.
+
+```{r}
+dp2cp(fit_st$dp, "st")
+
+```
+
+f\)
+
+The addition of the skewness parameter increases our p from 15 to 19.
+
+```{r}
+p_st = d*(d+1)/2 + d + 1 + d
+
+aic_st = -2*fit_st$logL + 2*p_st
+bic_st = -2*fit_st$logL + p_st*log(n)
+
+ic_st <- c(aic_st, bic_st)
+names(ic_st) <- c("AIC","BIC")
+ic_st
+```
+
+We can compare the information criteria for the multivariate t distribution and the skewed multivariate t distribution.
+
+```{r}
+ic_compare <- rbind(information_criteria, ic_st)
+rownames(ic_compare) = c("Multivariate T","Multivariate Skewed T")
+ic_compare
+```
+
+The AIC would choose the multivariate skewed T distribution and BIC would choose the multivariate T distribution.
