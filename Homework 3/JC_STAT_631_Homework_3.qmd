@@ -12,4 +12,134 @@ editor: visual
 engine: knitr
 ---
 
-## 
+1\)
+
+```{r}
+ library(MASS) # need for mvrnorm
+par(mfrow=c(1,4))
+N = 2500
+nu = 3
+set.seed(5640)
+cov=matrix(c(1, 0.8, 0.8, 1), nrow = 2)
+x= mvrnorm(N, mu = c(0, 0), Sigma = cov)
+w = sqrt(nu / rchisq(N, df = nu))
+x=x*cbind(w, w)
+plot(x, main = "(a)")
+ 
+set.seed(5640)
+cov=matrix(c(1, 0.8, 0.8, 1),nrow = 2)
+x= mvrnorm(N, mu = c(0, 0), Sigma = cov)
+w1 = sqrt(nu / rchisq(N, df = nu))
+w2 = sqrt(nu / rchisq(N, df = nu))
+x=x*cbind(w1, w2)
+plot(x, main = "(b)")
+ 
+set.seed(5640)
+cov=matrix(c(1, 0, 0, 1), nrow = 2)
+x= mvrnorm(N, mu = c(0, 0), Sigma = cov)
+w1 = sqrt(nu / rchisq(N, df = nu))
+w2 = sqrt(nu / rchisq(N, df = nu))
+x=x*cbind(w1, w2)
+plot(x, main = "(c)")
+
+set.seed(5640)
+cov=matrix(c(1, 0, 0, 1), nrow = 2)
+x= mvrnorm(N, mu = c(0, 0), Sigma = cov)
+w = sqrt(nu / rchisq(N, df = nu))
+x=x*cbind(w, w)
+plot(x, main = "(d)")
+
+```
+
+Problem 3)
+
+The sample with independent variates is c), we can see the density is circular. We can also see that there is no tail dependence, extreme in values in $x[,1]$ are not correlated with extreme values in $x[,2]$ and vice versa.
+
+Also if we look at the code we use the following $\Sigma$ matrix when generating the multivariate normal data:
+
+$$
+\Sigma=\begin{bmatrix} 1 &0 \\0& 1\end{bmatrix}
+$$
+
+Since $\Sigma$ is diagonal we know components $x_1,x_2$ are independent.
+
+We know there is no tail dependence because when we generate the two multivariate t -distribution we randomly pull from two different chi-square distributions.
+
+Problem 4)
+
+The sample with correlated variates that do not have tail dependence is b). We can see the correlation from the shape in the center of the density, it is diagonal stretching both to the top right and the bottom left.
+
+If we look at the code we can see the following $\Sigma$ matrix when generating the multivariate normal data:
+
+$$
+\Sigma= \begin{bmatrix} 1 &0.8 \\ 0.8 &1\end{bmatrix}
+$$
+
+We can see the covariance in the non diagonal entries.
+
+We know there is no tail dependence because when we generate the two multivariate t -distribution we randomly pull from two different chi-square distributions.
+
+Problem 5)
+
+The sample with uncorrelated variates with tail dependence is b). We can see the density shape in the middle is circular but we also see that extreme values in $x[,1]$ are also often extreme in $x[,2]$ and vice versa.
+
+If we look at the code we can see the following $\Sigma$ matrix when generating the multivariate normal data:
+
+$$
+\Sigma=\begin{bmatrix} 1 & 0 \\ 0 &1\end{bmatrix}
+$$
+
+Since $\Sigma$ is diagonal, the variates are independent.
+
+We know there is tail dependence because the two multivariate t -distributions that are generated are identical to each other, only one random pull from the $\chi^2$ distribution is performed.
+
+6\)
+
+a\)
+
+We know the below:
+
+$$
+\nu=5,\mu=\begin{bmatrix} 0.001 \\ 0.002\end{bmatrix},\Sigma=\begin{bmatrix} 0.10 & 0.03 \\ 0.03 & 0.15\end{bmatrix}
+$$
+
+We use the relationship $\Sigma=\frac{v}{v-2}\Lambda$. Then:
+
+$$
+\Lambda=\frac{3}{5}\begin{bmatrix}0.1 &0.03 \\ 0.03 & 0.15 \end{bmatrix}
+$$
+
+So then the multivariate t-distribution of $(X,Y)$, which we can label as S is:
+
+$$
+S \sim t_{5}(\mu,\Lambda)
+$$
+Since R is a portfolio of the two stocks and they are evenly weighted we can have weight vector $w=[0.5,0.5]^T$. Then, since $S$ is a multivariate t-distribution we can say:
+
+$$
+R=w^TS\sim t_{\nu}(w^T\mu,w^T \Lambda w)
+$$
+
+```{r}
+w <- c(.5,.5)
+Lambda <- matrix(c(.1, 0.03, 0.03, 0.15), nrow = 2, ncol = 2)
+mu <- c(0.001,0.002)
+R_mu <- t(w)%*%mu
+R_lambda <- t(w)%*%Lambda%*%w
+
+c(R_mu,R_lambda)
+```
+
+$$
+R\sim t_{5}(0.0015,0.0775)
+$$
+
+b\)
+
+```{r}
+set.seed(200128)
+x <- 0.0015 + rt(10000, df = 5)/0.0775
+quantile_99 <- quantile(x, probs = .99)
+avg_greater <- mean(x[which(x > quantile_99)])
+c(quantile_99,avg_greater)
+```
