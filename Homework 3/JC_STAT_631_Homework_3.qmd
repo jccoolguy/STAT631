@@ -113,8 +113,7 @@ So then the multivariate t-distribution of $(X,Y)$, which we can label as S is:
 
 $$
 S \sim t_{5}(\mu,\Lambda)
-$$
-Since R is a portfolio of the two stocks and they are evenly weighted we can have weight vector $w=[0.5,0.5]^T$. Then, since $S$ is a multivariate t-distribution we can say:
+$$ Since R is a portfolio of the two stocks and they are evenly weighted we can have weight vector $w=[0.5,0.5]^T$. Then, since $S$ is a multivariate t-distribution we can say:
 
 $$
 R=w^TS\sim t_{\nu}(w^T\mu,w^T \Lambda w)
