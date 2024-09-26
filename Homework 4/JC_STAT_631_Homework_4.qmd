@@ -5,4 +5,165 @@ format: pdf
 editor: visual
 ---
 
-## 
+1\)
+
+Problem 1)
+
+a\)
+
+```{r}
+library(copula)
+cop_t_dim3 = tCopula(dim = 3, param = c(-0.6, 0.75, 0),
+                     dispstr = "un", df = 1)
+set.seed(5640)
+rand_t_cop = rCopula(n = 500, copula = cop_t_dim3)
+pairs(rand_t_cop)
+cor(rand_t_cop)
+```
+
+a\)
+
+The copula model being sampled is $C_{t}(u_1,u_2,u_3|\Omega,\nu)$. Where $\Omega=\begin{bmatrix} 1.00 & -0.6 & 0.75 \\ -0.6 & 1.0 & 0.00 \\ 0.75 & 0.0 & 1.00\end{bmatrix}$.
+
+b\)
+
+N = 500.
+
+Problem 2)
+
+a\)
+
+They do not appear to be independent. We can see this from the tail dependence in both diagonal directions. Extreme values in one variable seem to beget extreme values in the other variable.
+
+b\)
+
+Yes we can see signs of tail dependence. Take the plot between variable 1 and variable 3 in the top right corner for example. Their correlation is 0.75, so we would expect the points to generally deviate in a linear fashion in the absence of tail dependence. In this case we see many points in the top left and bottom right areas of the plot, this is an indication of tail dependence.
+
+c\)
+
+The dependence shows in the clumps of points in the corner regions of the plot where we wouldn't expect them solely due to correlation.
+
+d\)
+
+The correlation provided to create the t-copula is the correlation between the values of the uniform distributions $u_1,u_2,u_3$. This is not the same as the correlation computed from the copula of the t distribution. If we wanted a measure of correlation that depended solely on the copula and doesn't change when we quantile transform we could instead use rank correlation either in the form of Kendall's tau or Spearmen's rho.
+
+Problem 3)
+
+```{r}
+cop_normal_dim3 = normalCopula(dim = 3, param = c(-0.6,0.75,0),
+dispstr = "un")
+mvdc_normal = mvdc(copula = cop_normal_dim3, margins = rep("exp",3),
+ paramMargins = list(list(rate=2), list(rate=3),
+                     list(rate = 4)))
+
+set.seed(5640)
+
+rand_mvdc = rMvdc(n = 1000, mvdc = mvdc_normal)
+pairs(rand_mvdc)
+par(mfrow = c(2,2))
+for(i in 1:3) plot(density(rand_mvdc[,i]))
+```
+
+a\)
+
+The marginal distributions are the exponential distributions with $\lambda =2,3,4$ respectively. It is known that the expected value of a exponential distribution is $E(X)=\frac{1}{\lambda}$ so $E(X)=1/2,1/3,1/4$ respectively.
+
+b\)
+
+Yes, the second and third components are independent. The correlation between the second and third components is 0.When correlation equals 0 for components $i,j$ it indicates independence in the Gaussian Copula as well.
+
+2\)
+
+1\)
+
+Kendall's tau is defined as:
+
+$$
+p_\tau(Y_1,Y_2)=E[\text{sign}\{(Y_1-Y_1^\star)(Y_2-Y_2^\star)\}
+$$
+
+If $g$ and $h$ are increasing functions or both decreasing functions:\
+
+$$
+\rho_\tau \{ g(Y_1),h(Y_2) \}=\rho_\tau(Y_1,Y_2)
+$$
+
+If one of $g$ and $h$ is a decreasing function and the other is an increasing function:
+
+$$
+\rho_\tau(g(Y_1),h(Y_2))=-\rho_{t}(Y_1,Y_2)
+$$
+
+So the Kendall's tau rank correlation between $X$ and $1/Y$ is -0.55 since $h(y)=1/y$ is a decreasing function and Kendall's rank correlation between $1/X$ and $1/Y$ is 0.55 since both $g(x)=1/x$ and $h(y)=1/y$ are decreasing functions.
+
+2\)
+
+With $X\sim \text{Uniform}(0,1)$ and $Y=X^2$ we can use the same property from question 1 to say that $g(Y)=\sqrt{y}$ is a strictly increasing monotonic function on $[0,1]$ . So then:
+
+$$
+\rho_{\tau}(X,Y^2)=\rho_\tau(X,\sqrt{y^2})=\rho_\tau(X,X)=1
+$$
+
+This property is the same for rank correlation.
+
+Pearson correlation will be below 1 because pearson correlation only measures the linear association between $X$ and $Y^2$.
+
+3\.
+
+```{r}
+library(quantmod);
+syb = c("PARA","CMCSA");  d = length(syb)
+yt = c()
+for(i in 1:d){
+	getSymbols(syb[i], from = "2011-01-01", to = "2024-09-14")
+	yt = cbind(yt,weeklyReturn(Ad(get(syb[i])), type ="log"))
+}
+colnames(yt) = syb
+yt = as.matrix(100*yt)  ## convert to % for numerical stability
+n = dim(yt)[1]
+```
+
+a\)
+
+```{r}
+library(rugarch)
+est = se = matrix(ncol = 3, nrow = 2)
+rownames(est) = rownames(se) = syb
+colnames(est) = colnames(se) = c("m", "s", "nu")
+
+for(i in 1:d){
+  mgd = fitdist("std",yt[,i])
+  est[i,] = mgd$pars
+  se[i,] = sqrt(diag(solve(mgd$hess)))
+}
+cors = c(Pearson = cor(yt)[1,2], Kendall = cor(yt, method = "k")[1,2],
+         Spearman = cor(yt, method = "s")[1,2])
+nu_CI = rbind(cbind(est[1, "nu"] - qnorm(.975)*se[1, "nu"], 
+                      est[1, "nu"] + qnorm(.975)*se[1, "nu"]),
+              cbind(est[2, "nu"] - qnorm(.975)*se[2, "nu"],
+                      est[2, "nu"] + qnorm(.975)*se[2, "nu"]))
+colnames(nu_CI) = c("lower_95%", "upper_95%")
+```
+
+```{r}
+cat("* MLE of fitting standardized t *\n\nEstimates:");est;cat("\nStandard errors:\n");se;
+cat("95% CI for DF");nu_CI;cat("correlations:"); cors
+```
+
+Informally we can say that it appears that the MLE fit marginal distributions have different degrees of freedom $\nu$, in this case the multivariate t distribution would not be appropriate as it assumes that $\nu$ are equal for both marginal distributions. We should consider the copula approach instead.
+
+From these correlations we can see that the two series are dependent.
+
+b\)
+
+```{r}
+ut = c()
+for(i in 1:d){
+  ut = cbind(ut, pdist("std", yt[, i], mu = est[i, "m"], sigma = est[i, "s"], shape = est[i,"nu"]))
+}
+par(mfrow = c(1,3), pty = "s", lwd = 1.1, mar = c(4,4,2,1))
+hist(ut[,1], xlab = "u1", main = ""); hist(ut[,2],xlab = "u2", main = "");
+plot(ut, xlab = "u1", ylab = "u2")
+```
+
+From the marginal distribution plost we can see the quantile transformed values are distributed close to uniform. In the copula plot we can see that values are positively correlated with evidence of tail dependence in the top left and bottom right corners.
