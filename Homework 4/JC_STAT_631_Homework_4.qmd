@@ -1,0 +1,8 @@
+---
+title: "STAT 631 Homework 4"
+author: "Jack Cunningham"
+format: pdf
+editor: visual
+---
+
+## 
