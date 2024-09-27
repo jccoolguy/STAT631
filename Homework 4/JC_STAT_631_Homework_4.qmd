@@ -131,6 +131,7 @@ est = se = matrix(ncol = 3, nrow = 2)
 rownames(est) = rownames(se) = syb
 colnames(est) = colnames(se) = c("m", "s", "nu")
 
+print(d)
 for(i in 1:d){
   mgd = fitdist("std",yt[,i])
   est[i,] = mgd$pars
@@ -147,7 +148,7 @@ colnames(nu_CI) = c("lower_95%", "upper_95%")
 
 ```{r}
 cat("* MLE of fitting standardized t *\n\nEstimates:");est;cat("\nStandard errors:\n");se;
-cat("95% CI for DF");nu_CI;cat("correlations:"); cors
+cat("95% CI for DF");nu_CI;cat("correlations:\n"); cors
 ```
 
 Informally we can say that it appears that the MLE fit marginal distributions have different degrees of freedom $\nu$, in this case the multivariate t distribution would not be appropriate as it assumes that $\nu$ are equal for both marginal distributions. We should consider the copula approach instead.
@@ -167,3 +168,154 @@ plot(ut, xlab = "u1", ylab = "u2")
 ```
 
 From the marginal distribution plost we can see the quantile transformed values are distributed close to uniform. In the copula plot we can see that values are positively correlated with evidence of tail dependence in the top left and bottom right corners.
+
+c\)
+
+```{r}
+library(copula)
+copNames = c("t", "normal", "frank","clayton", "gumbel", "joe")
+cops = vector("list",6);names(cops) = copNames
+
+for(i in 1:2){ ## 2 ellipticals
+	cops[[i]] = fitCopula(copula = ellipCopula(copNames[i],dim = 2), data = ut, method = "ml")
+}
+for(i in 3:6){ ## 4 archimedeans 
+	cops[[i]] = fitCopula(copula = archmCopula(copNames[i],dim = 2), data = ut, method = "ml")
+}
+
+
+```
+
+```{r}
+aic = rep(0, length(copNames))
+bic = rep(0, length(copNames))
+for(i in 1:length(copNames)){
+  aic[i] = -2*cops[[i]]@loglik + 2*length(cops[[i]]@estimate)
+  bic[i] = -2*cops[[i]]@loglik + log(n)*length(cops[[i]]@estimate)
+}
+information_criteria <- rbind(aic,bic)
+colnames(information_criteria) <- copNames
+information_criteria
+```
+
+The smallest value for both AIC and BIC is achieved by the t distribution.
+
+d\)
+
+```{r}
+Udex = ((1:n)-.05)/(n)
+Cn = C.n(u=cbind(rep(Udex,n),rep(Udex,each=n)), X =ut)
+empCop = expression(contour(Udex, Udex, matrix(Cn, n, n), col = "red3", add = TRUE))
+```
+
+```{r}
+par(mfrow = c(2,3), pty = "s", lwd = 1.1, mar = c(4,4,2,1))
+nu = round(cops$t@estimate[2]) ## pCoupla takes only integer df
+for(i in 1:2){  ## plot the 2 ellipticals
+	contour(ellipCopula(copNames[i], param = cops[[i]]@estimate[1], dim = 2, df = nu), pCopula, main = copNames[i])
+	eval(empCop)
+}
+for(i in 3:6){ ## plot the 4 archimedeans 
+	contour(archmCopula(copNames[i], param = cops[[i]]@estimate, dim = 2), pCopula, main = copNames[i])
+	eval(empCop)
+}
+```
+
+We can see that the t distribution does appear to fit this data snugly. The Joe and Gumbel distributions are noncompetitive as they don't track the non-parametric contours very well. The clayton, frank, normal and t t distributions seem to do a good job.
+
+e\)
+
+```{r}
+cops[[1]]
+```
+
+The estimates for the t distribution are $\rho=.5097$ and $\nu=7.0671$.
+
+4\.
+
+Part 1)
+
+```{r}
+load("Midterm21.RData")
+```
+
+```{r}
+head(yt,2);tail(yt,2)
+syb
+uni.t.est
+```
+
+1\)
+
+a\)
+
+In order for a bivariate-t distribution to be suitable for this model the two marginal distributions must have similar degrees of freedom. In this case we can see that the degrees of freedom are very close, and since we know that tail dependence is often present in financial return data bi-variate t is certainly a suitable candidate model.
+
+b\)
+
+```{r}
+library(MASS)
+library(mnormt)
+df = seq(2,6,0.01)
+loglik_p = c()
+
+for(i in 1:length(df)){
+  fit = cov.trob(yt, nu = df[i], cor = T)
+  loglik_p[i] = sum(dmt(yt, mean = fit$center, S = fit$cov, df = df[i],
+                        log = T))
+}
+nu = df[which.max(loglik_p)];
+MLE_fit = cov.trob(yt, nu = nu, cor = T)
+cor_MLE <- cov.trob(yt, nu = nu, cor = T)$cor
+center_matrix <- MLE_fit$center
+cat("The MLE of degrees of freedom", paste(nu))
+cat("\nThe estimated correlation is", cor_MLE[1,2])
+cat("\nThe mean values are", center_matrix[1], center_matrix[2])
+lambda = MLE_fit$cov
+```
+
+c\) Estimated marginal distributions are:
+
+```{r}
+sqrt(diag(lambda))
+```
+
+$$
+t_{3.89}(0.2539425,2.458848^2)
+$$
+
+$$
+t_{3.89}(0.2355746,2.364228^2)
+$$
+
+2\.
+
+a\)
+
+```{r}
+tail_dep = 2*pt(-sqrt(nu + 1)*(1 - rho)/(1 + rho),df = nu +1)
+cat("Tail dependence of the t-Copula: lambda = ", paste(round(tail_dep,6)))
+```
+
+b\)
+
+$$
+U_{it}=F(\frac{y_{it}-\mu_i}{\lambda_i}|\nu)
+$$
+
+```{r}
+ut = sapply(1:2, function(u) pt((yt[,u]-mu[u])/lambda[u], df = nu))
+```
+
+c\)
+
+$X_t$ is a bivariate meta-t with marginals $t_{\nu_i}(\mu_i,\lambda^2_i)$, then $X_t$ are quantile transformation of $U_{it},i=1,2$,
+
+$$
+X_{it}=\mu+\lambda F^{-1}(u_i|v_i)
+$$
+
+```{r}
+mu.x = c(.25, .25); lambda.x = c(2.45,3); nu.x = c(2,5);
+xt = sapply(1:2, function(u) mu.x[u] + lambda.x[u]*qt(ut[,u],nu.x[u]))
+```
