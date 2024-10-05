@@ -1,0 +1,254 @@
+---
+title: "STAT 631 Homework 5"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 10/09/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+```{r}
+load("HW05.Rdata")
+```
+
+1\)
+
+a\)
+
+In the case with short selling there are explicit solutions for the minimum variance portfolio. These are:
+
+$$
+w_{\text{min.v}}=\frac{\Sigma^{-1}1}{1^T \Sigma^{-1}1},\text{Mean}=\frac{\mu^T \Sigma^{-1}1}{1^T \Sigma^{-1}1},\text{Variance}=\frac{1}{1^T \Sigma^{-1}1}
+$$
+
+First we find the mean vector $\mu$ and covariance matrix $\Sigma$.
+
+```{r}
+y.mu <- apply(y,MARGIN = 2, FUN = mean)
+y.mu
+```
+
+```{r}
+y.S <- var(y)
+y.S
+```
+
+Now we can compute the weights.
+
+```{r}
+one_vector <- rep(1, 8)
+y.S_inv <- solve(y.S)
+w_min.v <- y.S_inv%*%one_vector/as.numeric((t(one_vector)%*%y.S_inv%*%one_vector))
+w_min.v
+```
+
+The expected return of this portfolio is:
+
+```{r}
+expected_return <- as.numeric(t(y.mu)%*%y.S_inv%*%one_vector)/
+  as.numeric(t(one_vector)%*%y.S_inv%*%one_vector)
+expected_return
+```
+
+The risk of this portfolio is:
+
+```{r}
+risk <- sqrt(1/as.numeric(t(one_vector)%*%y.S_inv%*%one_vector))
+risk
+```
+
+b\)
+
+The tangency portfolio also has an explicit solution with short selling allowed. With $\mu_{ex}=\mu-\mu_f1$:
+
+$$
+w_T=\frac{\Sigma^{-1}\mu_{ex}}{1^T\Sigma^{-1}\mu_{ex}}
+$$
+
+The annual risk-free rate is $4.37\%$. The weekly risk-free rate is $4.37\%/52$. The allocation weights of the tangency portfolio are below:
+
+```{r}
+weekly_risk_free <- .0437/52
+mu_excess = y.mu - weekly_risk_free
+w_tangency = y.S_inv %*% mu_excess/
+  as.numeric(one_vector^T %*% y.S_inv %*% mu_excess)
+w_tangency
+```
+
+The mean and variance of the tangency portfolio have the explicit solutions:
+
+$$
+\text{Mean}=\frac{\mu^T \Sigma^{-1}\mu_{ex}}{1^T \Sigma^{-1}\mu_{ex}},\text{Variance}=\frac{\mu_{ex}^T \Sigma^{-1}\mu_{ex}}{(1^T \Sigma^{-1} \mu_{ex})^2}
+$$
+
+So the expected return of the tangency portfolio is:
+
+```{r}
+expected_return_tangency <- as.numeric((t(y.mu) %*% y.S_inv %*% mu_excess)/
+  (t(one_vector)%*% y.S_inv %*% mu_excess))
+expected_return_tangency
+```
+
+And the risk of the tangency portfolio is:
+
+```{r}
+risk_tangency <- sqrt((t(mu_excess)%*%y.S_inv%*%mu_excess)/
+  (t(one_vector)%*%y.S_inv%*%mu_excess)^2)
+risk_tangency
+```
+
+c\)
+
+To plot the efficient frontier requires us to compute the risk for various expected returns. The explicit solution is below:
+
+$$
+\text{Amat}=[\mu,1],\text{H}=\text{Amat}^T \Sigma^{-1} \text{Amat}=\begin{bmatrix} C & B \\ B & A\end{bmatrix},\Delta=\text{det(H)}
+$$
+
+$$
+\text{Risk}_{opt}=\sqrt{\frac{Am^2-2Bm+C}{\Delta}}
+$$
+
+```{r}
+m.R = seq(-.15,1,0.001)
+Amat = cbind(y.mu, one_vector)
+H = t(Amat)%*%y.S_inv%*%Amat
+A = H[2,2];B = H[1,2];C = H[1,1]; Delta = det(H)
+sd.R = sqrt((A*m.R^2 - 2*B*m.R + C)/Delta)
+```
+
+Our plot is below:
+
+```{r}
+mu.min = -.15
+plot(sd.R,m.R, type = "l", xlim= c(0, max(sd.R)), xlab = "risk", ylab = "Return")
+lines(sd.R[m.R > mu.min],m.R[m.R > mu.min], lwd = 2.5, col = "red3")
+lines(c(0,risk_tangency), c(weekly_risk_free, expected_return_tangency), col = "navy")
+points(0, weekly_risk_free, pch = 19, col = "royalblue")
+points(risk_tangency,expected_return_tangency, pch = 21, col = "royalblue", bg = "green", cex = 1.2)
+points(risk, expected_return, pch = 19, col = "red3")
+for(i in 1:8){
+  text(sqrt(y.S[i]), y.mu[i], syb[i], font = 2)
+}
+
+legend("topleft",c("Efficient Frontier", "Efficient Portfolio", "Tangency Portfolio"), lty = c(1,1,NA), lwd = c(4,3,3), pch = c(NA,NA, 21), col = c("red3","royalblue","royalblue"), pt.bg = c("","","green"), pt.cex = c(NA,NA,1.5),
+                   y.intersp = 1.2, bty = "n", xjust = 5)
+```
+
+d\)
+
+To find the efficient portfolio with risk of 2.5% we use the fact that:
+
+$$
+\sigma_p=w_r \sigma_r
+$$
+
+where $\sigma_p$ is the risk of the portfolio, $w_r$ is the weight on the tangency portfolio and $\sigma_r$ is the risk of the tangency portfolio.
+
+So then:
+
+$$
+w_r=\frac{\sigma_p}{\sigma_r}
+$$ Where $\sigma_p$ is the allowed risk of 2.5% and $\sigma_r$ is the risk of the tangency portfolio is 3.351737%. So the weight is:
+
+```{r}
+w_r = as.numeric(2.5/risk_tangency)
+w_r
+```
+
+With the weight we can find the portfolio needed:
+
+```{r}
+port_d <- rbind(1 - w_r, w_r*w_tangency)
+rownames(port_d) <- c("Risk Free",syb)
+port_d
+```
+
+Now with the weight we use the fact that the return of the portfolio is:
+
+$$
+\mu_p=w_r\mu_r+(1-w_r)\mu_{\text{rf}}
+$$where $w_r$ is the weight on the tangency portfolio, $\mu_r$ is the return of the tangency portfolio and $\mu_{\text{rf}}$ is the risk free return. So the return of the efficient portfolio with allowed risk 2.5% is:
+
+```{r}
+mu_p = w_r*expected_return_tangency + (1 - w_r)*weekly_risk_free
+mu_p
+```
+
+e\)
+
+To find the efficient portfolio of a target return $0.55\%$ we reverse the steps of part d. First we find the weight that corresponds to this return through:
+
+$$
+\mu_p=w_r\mu_r+(1-w_r)\mu_{\text{rf}}
+$$
+
+$$
+w_r=\frac{\mu_p-\mu_{\text{rf}}}{\mu_r-\mu_{\text{rf}}}
+$$
+
+So the weight on the tangency portfolio is:
+
+```{r}
+w_r_e <- (.55 - weekly_risk_free)/(expected_return_tangency - weekly_risk_free)
+w_r_e
+```
+
+With the weight we can find the portfolio:
+
+```{r}
+port_e <- rbind(1 - w_r_e, w_r_e*w_tangency)
+rownames(port_e) <- c("Risk Free",syb)
+port_e
+```
+
+So the risk of this portfolio can be computed through:
+
+$$
+\sigma_p=w_r \sigma_r
+$$
+
+```{r}
+risk_e <- w_r_e*risk_tangency
+risk_e
+```
+
+f\)
+
+We go through the same procedure as part e to start:
+
+$$
+w_r=\frac{\mu_p-\mu_{\text{rf}}}{\mu_r-\mu_{\text{rf}}}
+$$
+
+```{r}
+w_r_f = (.85 - weekly_risk_free)/(expected_return_tangency - weekly_risk_free)
+w_r_f
+```
+
+We find that in order to get this target return of 0.85% we would need a weight over 1 in the tangency portfolio. This is not feasible as we would need to take out a loan to make up the difference. Therefore we look to the efficient frontier to find a portfolio of risky assets with the desired return. We can find the portfolio by using the two constraints:
+
+$$
+\text{Amat}=\begin{bmatrix} \mu & 1 \end{bmatrix} ,\text{bvec}=\begin{bmatrix} 0.85\% \\ 1\end{bmatrix}
+$$
+
+```{r}
+library(quadprog)
+Amat = cbind(y.mu, one_vector)
+bvec = c(.85,1)
+zeros = rep(0,8)
+out = solve.QP(Dmat = y.S, dvec = zeros, Amat = Amat, bvec = bvec, meq = 2)
+w_f = out$solution; names(w_f) = syb
+cat("Portfolio:"); w_f
+```
+
+We can find the risk from what we computed in part c to plot the efficient frontier. The details of the computation are in part c. The risk is:
+
+```{r}
+sd.R[which(m.R == .85)]
+```
