@@ -44,6 +44,7 @@ Now we can compute the weights.
 one_vector <- rep(1, 8)
 y.S_inv <- solve(y.S)
 w_min.v <- y.S_inv%*%one_vector/as.numeric((t(one_vector)%*%y.S_inv%*%one_vector))
+colnames(w_min.v) = "Weights"
 w_min.v
 ```
 
@@ -77,6 +78,7 @@ weekly_risk_free <- .0437/52
 mu_excess = y.mu - weekly_risk_free
 w_tangency = y.S_inv %*% mu_excess/
   as.numeric(one_vector^T %*% y.S_inv %*% mu_excess)
+colnames(w_tangency) = "Weights"
 w_tangency
 ```
 
@@ -97,8 +99,8 @@ expected_return_tangency
 And the risk of the tangency portfolio is:
 
 ```{r}
-risk_tangency <- sqrt((t(mu_excess)%*%y.S_inv%*%mu_excess)/
-  (t(one_vector)%*%y.S_inv%*%mu_excess)^2)
+risk_tangency <- as.numeric(sqrt((t(mu_excess)%*%y.S_inv%*%mu_excess)/
+  (t(one_vector)%*%y.S_inv%*%mu_excess)^2))
 risk_tangency
 ```
 
@@ -124,16 +126,17 @@ sd.R = sqrt((A*m.R^2 - 2*B*m.R + C)/Delta)
 
 Our plot is below:
 
-```{r}
+```{r, fig.width=10, fig.height=10}
 mu.min = -.15
-plot(sd.R,m.R, type = "l", xlim= c(0, max(sd.R)), xlab = "risk", ylab = "Return")
+y.sd = sqrt(diag(y.S))
+plot(sd.R,m.R, type = "l", xlim= c(0, 8), xlab = "risk", ylab = "Return")
 lines(sd.R[m.R > mu.min],m.R[m.R > mu.min], lwd = 2.5, col = "red3")
 lines(c(0,risk_tangency), c(weekly_risk_free, expected_return_tangency), col = "navy")
 points(0, weekly_risk_free, pch = 19, col = "royalblue")
 points(risk_tangency,expected_return_tangency, pch = 21, col = "royalblue", bg = "green", cex = 1.2)
 points(risk, expected_return, pch = 19, col = "red3")
 for(i in 1:8){
-  text(sqrt(y.S[i]), y.mu[i], syb[i], font = 2)
+  text(y.sd[i], y.mu[i], syb[i], font = 2)
 }
 
 legend("topleft",c("Efficient Frontier", "Efficient Portfolio", "Tangency Portfolio"), lty = c(1,1,NA), lwd = c(4,3,3), pch = c(NA,NA, 21), col = c("red3","royalblue","royalblue"), pt.bg = c("","","green"), pt.cex = c(NA,NA,1.5),
@@ -252,3 +255,127 @@ We can find the risk from what we computed in part c to plot the efficient front
 ```{r}
 sd.R[which(m.R == .85)]
 ```
+
+2\)
+
+a\)
+
+In the case without short selling there is no explicit solution for the minimum variance portfolio. We set two constraints:
+
+$$
+\text{Amat}=\begin{bmatrix} 1 & I_n\end{bmatrix}, \text{bvec} = \begin{bmatrix} 1 \\ 0 \end{bmatrix}
+$$
+
+```{r}
+Amat = cbind(one_vector, diag(8))
+bvec = c(1, zeros)
+out = solve.QP(Dmat = y.S, dvec = zeros, Amat = Amat, bvec = bvec, meq = 1)
+w.min = out$solution; w.min = w.min*(abs(w.min) > 10e-7);names(w.min) = syb;
+mu.min = sum(w.min*y.mu); sd.min = sqrt(2*out$val)
+w.min
+
+c(return = mu.min, risk = sd.min)
+```
+
+b\)
+
+In the case without short selling there is also no explicit solution for the tangency portfolio. We find a portfolio $w_\star$ and then re-scale so the sum of weights is equal to 1. So we can choose the below constraints to find $w_\star$:
+
+$$
+\text{Amat}=\begin{bmatrix} \mu-\mu_f1 & I_n\end{bmatrix}, \text{bvec} = \begin{bmatrix} m \\ 0 \end{bmatrix}
+$$
+
+```{r}
+amat = cbind(y.mu - weekly_risk_free, diag(8))
+bvec = c(0.4, zeros)
+out = solve.QP(Dmat = y.S, dvec = zeros, Amat = amat, bvec = bvec, meq = 1)
+w.star = out$solution; names(w.star) = syb
+w.T = w.star/sum(w.star)
+w.T = w.T * (abs(w.T) > 10e-7)
+cat("Portfolio: ");w.T
+
+mu.T = sum(w.T*y.mu); s.T = sqrt(2*out$value)/sum(out$solution)
+c(return = mu.T, risk = s.T)
+```
+
+c)  
+
+First we need to create the risk-return sets. We do this by finding the portfolios with pre-specified returns ranging from the lowest per stock return (PFE with return 0.15%) and the highest per stock return (TSLA with return 0.7%) and then computing the risk of each portfolio.
+
+```{r}
+m.R = seq(round(min(y.mu)+.005,3), round(max(y.mu)-.005,3), 0.001);
+Amat = cbind(y.mu, one_vector, diag(8)) ## for positive w
+sd.R = c();
+for(i in 1:length(m.R)){
+  bvec = c(m.R[i],1, zeros) ## for nonnegative w
+  out= solve.QP(y.S, dvec = zeros, Amat=Amat, bvec = bvec, meq = 2);
+  sd.R[i] = sqrt(2*out$value)
+ }
+```
+
+Now we can create our plot:
+
+```{r, fig.width=10,fig.height=10}
+plot(sd.R,m.R, type = "l", xlim= c(0, 8), ylim = c(0, .8), xlab = "risk", ylab = "Return")
+lines(sd.R[m.R > mu.min],m.R[m.R > mu.min], lwd = 2.5, col = "red3")
+lines(c(0,s.T), c(weekly_risk_free, mu.T), col = "navy")
+points(0, weekly_risk_free, pch = 19, col = "royalblue")
+points(s.T,mu.T, pch = 21, col = "royalblue", bg = "green", cex = 1.2)
+points(sd.min, mu.min, pch = 19, col = "red3")
+for(i in 1:8){
+  text(y.sd[i], y.mu[i], syb[i], font = 2)
+}
+
+legend("topleft",c("Efficient Frontier", "Efficient Portfolio", "Tangency Portfolio"), lty = c(1,1,NA), lwd = c(4,3,3), pch = c(NA,NA, 21), col = c("red3","royalblue","royalblue"), pt.bg = c("","","green"), pt.cex = c(NA,NA,1.5),
+                   y.intersp = 1.2, bty = "n", xjust = 5)
+```
+
+d\)
+
+To find the portfolio with allowed risk 2.5% we follow a procedure similar to the case with short selling:
+
+$$
+\sigma_p=w_r\sigma_r
+$$
+
+$$
+w_r=\sigma_p/\sigma_r
+$$
+
+So we have the weights below:
+
+```{r}
+w_r_d <- 2.5/s.T
+c(Risk_Free = 1 - w_r_d, Tangency_Portfolio = w_r_d)
+weights_d <- c(1 - w_r_d, w_r_d*w.T)
+names(weights_d) = c("Risk Free", syb)
+weights_d
+```
+
+And the portfolio's return and risk:
+
+```{r}
+c(return_d = as.numeric(t(weights_d)%*% c(weekly_risk_free, y.mu)),
+  risk_d = 2.5)
+```
+
+e\)
+
+Since the return of 0.55% is greater than the 0.43%, the return of the tangency portfolio, we need to find a portfolio off of the efficient frontier. The weight, return and risk are below:
+
+```{r}
+m.e = 0.55
+Amat = cbind(y.mu, one_vector, diag(8))
+bvec = c(m.e,1, zeros)
+out = solve.QP(y.S, dvec = zeros, Amat=Amat, bvec = bvec, meq = 2);
+sd.e = sqrt(2*out$value)
+portfolio_weights = out$solution;names(portfolio_weights) = syb;
+portfolio_weights = portfolio_weights*(abs(portfolio_weights) > 10e-7)
+cat("Portfolio Weights:");portfolio_weights
+cat("Return: 0.55%","Risk: ",sd.e )
+
+```
+
+f\)
+
+The portfolio with the highest return that we can construct is one holding solely the highest return stock, in this case holding TSLA with a return of .7%. Since the target return of 0.85% is larger than the return of a portfolio holding only TSLA it can not be constructed without short selling.
