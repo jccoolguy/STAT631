@@ -1,0 +1,32 @@
+##_____________________________________________________
+##
+##		Plotting efficient frontier, tangency portfolio
+##		and minimum variance portfolio
+##__________________________________________________
+##
+## m.R -- a vector of risky asset returns you created.
+## sd.R -- risk (standard deviation) corresponding m.R.
+## mu.min -- return of minimum variance portfolio
+## s.min -- risk of minimum variance portfolio
+## mu.T -- return of tangency portfolio
+## s.T  -- risk of tangency portfolio
+## y.mu  = apply(y,2,mean)  ## mean of y
+## y.sd = apply(y,2,mean)   ## sd of y
+## mu.f -- risk free asset return, make sure to convert it to weekly.
+
+
+plot(sd.R, m.R, type = "l", xlim = c(0,max(sd.R)), xlab = "risk", ylab = "Return")
+lines(sd.R[m.R > mu.min], m.R[m.R > mu.min], lwd = 2.5, col = "red3");  ## efficient frontier
+lines(c(0,s.T), c(mu.f, mu.T), col = "navy")
+points(0,mu.f, pch = 19, col = "royalblue") ## risk-free asset return
+points(s.T,mu.T, pch = 21, col ="royalblue", bg = "green", cex = 1.2) ## tangency portfolio
+points(s.min, mu.min, pch = 19, col = "red3") ## minimum variance portfolio
+for(i in 1:N){ ## individual stock
+	text(y.sd[i], y.mu[i], syb[i], font = 2)
+}
+
+legend("topleft",c("Efficient Frontier", "Efficient Portfolio","Tangency Portfolio"),lty=c(1,1, NA),lwd=c(4,3, 3),pch=c(NA,NA, 21), 
+col=c("red3","royalblue","royalblue"), pt.bg=c("","","green"), pt.cex = c(NA,NA, 1.5), y.intersp = 1.2,bty = "n", xjust = 5)
+
+## Reminder: risk is standard deviation, it is in x-axis
+## Any scalar from matrix operation is still in matrix form, apply as.vector(). 
