@@ -1,0 +1,379 @@
+---
+title: "STAT 631 Homework 7"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 10/21/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+1\)
+
+```{r}
+load("HW07.RData")
+n = dim(Rt)[1];N = dim(Rt)[2]
+```
+
+The first thing we must do is create our vectors for $Y_{jt}=R_{jt}-\mu_{ft}$, the excess returns on the jth security. And $Y_{Mt}=R_{Mt}-\mu_{ft}$ the excess returns on the market portfolio.
+
+```{r}
+Yt = apply(Rt, 2, function(u) u - Rf)
+YM = RM - Rf
+```
+
+Next we will compute the linear model:
+
+$$
+Y_{t}=\alpha+\beta(Y_{Mt})+e_t
+$$
+
+```{r}
+fit = lm(Yt ~ YM)
+sfit = summary(fit)
+```
+
+a\)
+
+The estimates of beta for each asset is below:
+
+```{r}
+beta_est <- fit$coefficients[2,]
+beta_est
+```
+
+The assets with the highest betas are Micron Technology, Inc. and Polaris Industries Inc. with $\hat{\beta}=$ `r c(beta_est[6], beta_est[8])` respectively.
+
+b\)
+
+The square risk is computed through the below formula:
+
+$$
+\sigma_{j}^2=\beta_j^2\sigma_M^2+\sigma_{e_j}^2
+$$\
+Which has two components, market of systematic component of risk $\beta_j^2 \sigma_M^2$ and unsystematic component of risk $\sigma^2_{e_j}$. In the regression context the proportion of square risk that is due to the systematic risk is equivalent to $R^2$ for each regression.
+
+```{r}
+R.Sq = c()
+for(i in 1:N){
+  R.Sq = c(R.Sq, sfit[[i]]$r.sq)
+}
+names(R.Sq) = syb; R.Sq
+```
+
+c\)
+
+If we assume that each $Y_{it}$ follows CAPM that means we are assuming that $\alpha_i=0$ for each. Then the estimate of excess return is simply $\hat{Y_{it}}=\hat{\beta_i}\bar{Y}_{Mt}$.
+
+```{r}
+average_market_return <- mean(YM)
+excess_return <- beta_est*average_market_return
+excess_return
+```
+
+d\)
+
+To test if the CAPM holds for each individual asset we test:
+
+$$
+H_0:\alpha_i=0,H_1:\alpha_i\neq0
+$$
+
+This is automatically computed through the lm function.
+
+```{r}
+Alpha = c()
+for(i in 1:N){
+  Alpha = rbind(Alpha, sfit[[i]]$coef[1,])
+}
+rownames(Alpha) = syb; Alpha
+```
+
+At a significance level of $\alpha = 0.05$ we can say that every asset except Broadcom Inc. cannot reject the null hypothesis. For Broadcom Inc the estimate of $\alpha$ is `r Alpha[2,1]` . Since this is greater than zero we can conclude that this security was under-priced in the past.
+
+2\)
+
+a\)
+
+If we assume $y_1,…,y_m$ are i.i.d k x 1 random vectors and $y_i\sim N_k(0,\Omega)$ Then $S=\sum_{i=1}^my_iy_i^T \sim W_k(m,\Omega)$, the Wishart distribution with N degrees of freedom. Then:
+
+$$
+\frac{m-k+1}{k}y^TS^{-1}y \sim F_{k,m-k+1}
+$$
+
+We are testing:
+
+$$
+H_0:\alpha=0,H_1:\text{Any } \alpha_i\neq0
+$$
+
+For the Wald test we have the below:
+
+$$
+F_W=\frac{n-N-1}{nN}\frac{1}{m_{11}}\hat{\alpha}^T\hat{\Sigma_{e}}^{-1}\hat{\alpha}\sim F_{N,n-N-1}
+$$
+
+```{r}
+alpha = Alpha[, "Estimate"]
+et = resid(fit)
+Sig = 1/n*t(et)%*%et
+m11 = sfit[[1]]$cov.unscaled[1,1]
+wald = (n - N - 1)/(n*N)*1/m11*t(alpha)%*%solve(Sig)%*%alpha
+cat("Wald test:");c(statistic = wald, p.value = 1 - pf(wald, N, n - N - 1))
+```
+
+The likelihood ratio test statistic is the discrepancy between the full and reduced model under $H_0$:
+
+$$
+\text{LRT}=2\{\ell(\hat{\alpha},\hat{\beta},\hat{\Sigma_e})-\ell(0,\hat{\beta_0},\hat{\Sigma}_{0e})\}
+$$
+
+Through simplification and a non-normality adjustment we have:
+
+$$
+\Im_{LR}=(n-N/2-2)\{\log|\hat{\Sigma}_{0e}|-\log|\hat{\Sigma}_e|\} \sim X_N^2
+$$
+
+```{r}
+fit0 <- lm(Yt ~ YM - 1)
+et0 <- resid(fit0)
+Sig0 = 1/n*t(et0)%*%et0
+lr = (n-N/2 - 2)*(log(det(Sig0))-log(det(Sig)))
+cat("Likelihood ratio test:"); c(statistic = lr, p.value = 1 - pchisq(lr,N))
+```
+
+Both tests fail the reject the null hypothesis that the CAPM model holds at significance level $\alpha = 0.05$. This is different than what we would expect as we previously found that individually Broadcom Inc. did not follow CAPM. However these test the overall p-value as opposed to the individual p-values from earlier.
+
+b\)
+
+We have been unable to reject the null hypothesis that the CAPM model holds. In this case the total risk of $Y_t$ is:
+
+$$
+\sigma_{j}=\sqrt{\beta_j^2\sigma_M^2+\sigma_{e_j}^2}
+$$
+
+We can find the systematic component of risk through$\sqrt{\beta^2_j\sigma^2_M}$, along with the covariance: $\sigma_{jj^\prime}=\beta_j\beta_{j^\prime}\sigma^2_M$:
+
+```{r}
+systematic <- beta_est%*%t(beta_est)*as.numeric(var(YM))
+systematic
+```
+
+The non-systematic component of risk is $\sigma^2_{e_j}$, this is the variance of errors $\hat{\Sigma}$:
+
+```{r}
+Sig
+```
+
+c)
+
+We can find the minimum non-systematic variance portfolio by using $\Sigma$ from our regression in the minimum variance portfolio formula.
+
+$$
+w_{min.v}=\frac{\Sigma^{-1}1}{1^T\Sigma^{-1}1}
+$$
+
+```{r}
+ones = rep(1, N)
+IS = solve(Sig)
+a = as.numeric((t(ones)%*%IS%*%ones))
+w.min = 1/a*(IS%*%ones)
+w.min
+```
+
+d\)
+
+```{r}
+w_equal <- rep(1/8,N)
+```
+
+To test both portfolios we create 8 x 2 matrix W:
+
+```{r}
+W = cbind(w.min,w_equal)
+```
+
+Then the hypothesis to test if these two portfolios follow the CAPM model is:
+
+$$
+H_0:W^T\alpha=0,H_A:W^T\alpha \neq0
+$$
+
+Then we have the test statistic:
+
+$$
+\frac{m-k+1}{k}y^TS^{-1}y \sim F_{k,m-k+1}
+$$
+
+Where $y=W^T\hat{\alpha},S=n\widehat{var}(W^T \hat{\alpha}),m=n-2$. With $var(\hat{\alpha})=m_{11}\Sigma_e$. And $m_{11}$ is $(X^TX)^{-1}_{11}$.
+
+```{r}
+y = t(W)%*%alpha
+S = n*m11*t(W)%*%Sig%*%W
+m = n - 2
+k = 2
+
+test_stat <- (m-k+1)/k*t(y)%*%solve(S)%*%y
+cat("Wald test statistic: "); c(statistic = test_stat, 
+                               p.value = 1 - pf(test_stat, k, n - k - 1))
+```
+
+We cannot reject the null hypothesis that both portfolios follow CAPM.
+
+3\)
+
+```{r}
+load("Midterm22.RData")
+```
+
+a\)
+
+```{r}
+Yt = apply(rt, 2, function(u) u - Rf)
+YM = Mkt - Rf
+fit = lm(Yt ~ YM)
+betas = fit$coefficients[2,]
+ind = order(betas, decreasing = T)
+betas = betas[ind]
+rt = rt[,ind]
+syb = syb[ind]
+betas
+```
+
+```{r}
+rt.A = rt[,1:9]
+rt.B = rt[,10:18]
+```
+
+b\)
+
+The portfolio without short selling has N+2 constraints with:
+
+$$
+\text{Amtx}=\begin{bmatrix} \mu & 1 & I_n\end{bmatrix}, \text{and }\begin{bmatrix}m \\ 1 \\ 0 \end{bmatrix} 
+$$
+
+Where meq = 2.
+
+The minimum variance portfolio removes the first constraint. So we have:
+
+```{r}
+library(quadprog)
+N = 9
+ones = rep(1,9)
+zeros = rep(0,9)
+rt.A.mu = apply(rt.A, 2, mean)
+rt.A.S = var(rt.A)
+
+Amat = cbind(ones, diag(N))
+bvec = c(1, zeros)
+out = solve.QP(Dmat = rt.A.S, dvec = zeros, Amat = Amat, bvec = bvec, meq = 1)
+w.min = out$solution; w.min = w.min*(abs(w.min) > 10e-7);names(w.min) = syb[1:9];
+mu.min = sum(w.min*rt.A.mu);sd.min = sqrt(2*out$val)
+w.min
+c(return = mu.min, risk = sd.min)
+```
+
+c\)
+
+We obtain a portfolio on the tangent line with any pre-specified return m then we re=scale so w sums to 1.
+
+```{r}
+rt.B.mu = apply(rt.B, 2, mean)
+rt.B.S = var(rt.B)
+mu.f = 3.31/52
+Amat = as.matrix(rt.B.mu - mu.f)
+bvec = 0.3
+out = solve.QP(Dmat = rt.B.S, dvec = zeros, Amat = Amat, bvec = bvec, meq = 1)
+w.star = out$solution; names(w.star) = syb[10:18]
+w.T = w.star/sum(w.star)
+cat("Portfolio:"); w.T
+
+mu.T = sum(w.T*rt.B.mu);s.T = sqrt(2*out$value)/sum(out$solution)
+c(return = mu.T, risk = s.T)
+
+```
+
+d\)
+
+We use that $w = (.5,.5)$ then expected return is $w^T\mu$ and the variance covariance matrix is $w \Sigma w^T$.
+
+```{r}
+w = c(.5,.5)
+mean_est <- sum(w*c(mu.min,mu.T))
+Sigma = diag(c(sd.min, s.T)^2)
+Sigma[1,2] = Sigma [2,1] = as.vector( t(w.min)%*%cov(rt.A,rt.B)%*%w.T)
+c(mean = mean_est)
+Sigma
+```
+
+e\)
+
+The portfolio with the highest Sharpe ratio is the Tangency Porfolio. For the sake of simplicity I will say that short selling is not allowed.
+
+```{r}
+port.mu = c(mu.min, mu.T)
+port.s = Sigma
+mu.f = 3.31/52
+Amat = as.matrix(port.mu - mu.f)
+bvec = 0.3
+
+zeros = rep(0,2)
+out = solve.QP(Dmat = port.s, dvec = zeros, Amat = Amat, bvec = bvec, meq = 1)
+w.star2 = out$solution; names(w.star) = c("A","B")
+w.T2 = w.star2/sum(w.star2)
+cat("Portfolio:"); w.T2
+
+mu.T2 = sum(w.T2*port.mu);s.T2 = sqrt(2*out$value)/sum(out$solution)
+c(return = mu.T2, risk = s.T2)
+```
+
+f\)
+
+```{r}
+weights = c(w.T2[1]*w.min,w.T2[2]*w.T)
+weights
+```
+
+So we have test statistic:
+
+$$
+\frac{m-k+1}{k}y^TS^{-1}y \sim F_{k,m-k+1}
+$$
+
+In this case we fit model first:
+
+```{r}
+Mkt_excess <- Mkt - Rf
+rt_excess <- apply(rt, 2, function(u) u - Rf)
+fit_f <- lm(rt_excess ~ Mkt_excess)
+fit_f
+```
+
+```{r}
+alpha = fit_f$coefficients[1,]
+n = dim(rt)[1]
+N = dim(rt)[2]
+y = t(weights)%*%alpha
+m11 = sum_fits[[1]]$cov.unscaled[1,1]
+Sig = 1/n*t(resid(fit))%*%resid(fit)
+S = n*m11*t(weights)%*%Sig%*%weights
+k = 18
+stat_f <- (n - k - 1)/k*y%*%solve(S)%*%y
+stat_f
+c(stat = stat_f, p.value = 1 - pf(stat_f, df1 = k, df2 = n - k - 1 ))
+```
+
+We cannot reject the null hypothesis of CAPM.
+
+g\)
+
+```{r}
+return_g <- mu.f*.15 + .85*mu.T2
+risk_g <- .85*s.T2
+c(return = return_g, risk = risk_g)
+```
