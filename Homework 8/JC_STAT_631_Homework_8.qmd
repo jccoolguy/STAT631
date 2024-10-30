@@ -165,3 +165,30 @@ cov.diag.test(Sig.e, Ns = rep(1,N), n = n, p = p)
 ```
 
 This test rejects the null hypothesis of a diagonal covariance matrix.
+
+2\)
+
+```{r}
+fa.none = factanal(Yt,3,rotation = "none")
+print(fa.none)
+```
+
+The first factor has all positive coefficients and are relatively similar, it seems to be a shared market component.
+
+The second factor has negative, with the exception of a near zero coefficient for Danone SA, coefficient for all stocks in the food industry. This appears to be an industry factor.
+
+The third factor looks like an aggressiveness component. It is positive for all tech and entertainment stocks with generally negative values for health and food stocks. This comports with our previous analysis of betas for each stock.
+
+b\)
+
+```{r}
+p = 3
+Zt = apply(Yt, 2, function(u) (u-mean(u))/sd(u))
+fa = factanal(Zt, p, scores = "Bartlett", rotation = "none")
+B = t(fa$loading)
+Ft.fa = fa$scores
+resid_mat = Zt - Ft.fa %*% B
+resid.summary(resid_mat)
+```
+
+There is still correlation but it is less grouped by industry. It is less severe between particular stocks, before in the FFA-3-F model correlation was particularly strong for certain pairs. This model makes the assumption of a diagonal covariance matrix more reasonable.
