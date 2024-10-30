@@ -1,0 +1,78 @@
+---
+title: "STAT 631 Homework 8"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 11/01/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+```{r}
+source("FM_Functions.R")
+source("Factor_Tests.R")
+load("HW08.RData")
+attach(FF5)
+```
+
+1\)
+
+The Fama-French 3 factor model is the below:
+
+$$
+Y_t=\alpha+B^TF_t+\epsilon_t, \quad E[\epsilon_t|F_t]=0,\quad E[\epsilon_t \epsilon_t^T|F_t]=\Sigma_{\epsilon}
+$$
+
+Where $F=\begin{bmatrix}\text{Excess Return Market Portfolio} & \text{Small Minus Big} & \text{High Minus Low}\end{bmatrix}$, these are each economic vectors with length n.
+
+```{r}
+Yt = apply(Rt,2, function(x) x-RF); dimnames(Yt)[[2]] = syb;
+n = dim(Yt)[1]; N = dim(Yt)[2]; p = 3
+fit = lm(Yt ~ Mkt.RF + SMB + HML); sfit = summary(fit)
+```
+
+a\)
+
+```{r}
+betas = coef(fit)[-1,]
+R.Squared = c(); for(i in 1:N) R.Squared[i] = sfit[[i]]$r.squared
+coef.plot(R.Squared, coef(fit)[-1,],labs = syb)
+```
+
+From the R squared plot we see that the three factor Fama French model performance varies greatly. Let's take a look at the breakdown by industry:
+
+```{r}
+table(Hi_R.Sq = R.Squared > 0.5, by_industry)
+```
+
+Generally R-Squared isn't very high for these assets. There are only two that exceed 0.5, both are in the technology industry Microsoft and Autodesk.
+
+```{r}
+table(Hi_R.Sq = R.Squared < 0.2, by_industry)
+```
+
+R-Squared is particularly low for the Food industry, six of the seven stocks have an R-Squared beneath 0.2. This indicates that the three factor Fama French model does not perform well for this industry.
+
+```{r}
+table(Aggressive = coef(fit)[2,] > 1, by_industry)
+```
+
+On an industry level we see that that Food and Heath Care are not aggressive compared to market returns while Technology generally is. Entertainment is more of a mixed bag.
+
+```{r}
+library(tidyverse)
+compare <- data.frame(
+  Stock = syb,
+  Beta = coef(fit)[2,],
+  Industry = by_industry
+)
+compare |> 
+  group_by(Industry) |> 
+  summarise(Average_Beta = mean(Beta))
+```
+
+By taking a look at the average Beta we can see that the Food Industry has a Beta of 0.4132 on average. Healthcare, despite being not aggressive compared to the market, is far closer to 1 in comparison.
