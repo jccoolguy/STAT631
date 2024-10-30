@@ -76,3 +76,92 @@ compare |>
 ```
 
 By taking a look at the average Beta we can see that the Food Industry has a Beta of 0.4132 on average. Healthcare, despite being not aggressive compared to the market, is far closer to 1 in comparison.
+
+b\)
+
+To identify the individual assets that don't follow the FF-3-factor model we use the t-test for $H_0:\alpha_i=0$ that is automatically computed from the lm function.
+
+```{r}
+Alpha = c()
+for(i in 1:N){
+  Alpha = rbind(Alpha, sfit[[i]]$coef[1, ])
+}
+dimnames(Alpha)[[1]] = syb
+Alpha_df <- data.frame(Alpha, Industry = by_industry)
+Alpha_df |> 
+  filter(Pr...t.. < .05)
+```
+
+There are four individual assets that do not follow the FF-3 factor model, Live Nation Entertainment, Paramount, Warner Brothers Discovery and Pediatric Medical Group. The first three are in the entertainment industry and the last is in healthcare.
+
+c\)
+
+We are testing the hypothesis that $H_0:\alpha = 0$. If we reject this hypothesis this indicates that the FF-3 factor does not hold for all 27 assets. We perform the Wald and Likelihood Ratio Tests.
+
+```{r}
+alpha <- coef(fit)[1, ]
+res = resid(fit); Sig.e = 1/n*t(res)%*%res
+m11 = sfit[[1]]$cov.unscaled[1,1]
+var.alpha = m11*Sig.e
+p = 3
+
+wald.fun(est = alpha, est.var = var.alpha, n =  n, p = p)
+res.0 = resid(lm(Yt~Mkt.RF + SMB + HML - 1))
+Sig.e0 = 1/n*t(res.0)%*%res.0
+lrt.fun(sig = Sig.e, sig0 = Sig.e0,n = n)
+```
+
+Both the Wald and Likelihood test ratios have a similar result with p value $\approx.271$. We cannot reject the null hypothesis that the FF-3 factor holds for all 27 assets.
+
+d\)
+
+```{r}
+wald = c(); lrt = c()
+for(i in industry){
+  ind = which(by_industry == i)
+  wald = rbind(wald, wald.fun(alpha[ind], m11*Sig.e[ind,ind],n = n, p = p))
+  lrt = rbind(lrt, lrt.fun(Sig.e[ind,ind], Sig.e0[ind,ind], n = n))
+}
+
+rownames(wald) = rownames(lrt) = industry
+cat("Wald test by industry:"); wald
+cat("LRT by industry:"); lrt
+```
+
+All industries cannot reject the null hypothesis that the FF-3 factor model holds for their respective stocks at a significance level of 0.05. However there is still a significant difference between the industries. At a significance level of 0.1 both entertainment and healthcare would reject the null hypothesis. The Food industry however has a p.value $\approx 0.96$, the evidence strongly suggests the FF-3 factor model holds well for this industry.
+
+e\)
+
+The sample covariance approach has $N(N+1)/2$ estimates. With $N = 27$ this is 378 estimates.
+
+The model based approach has $(p+1)(N+p/2)$ estimates. With $N=27,p=3$ this is 114 estimates.
+
+```{r}
+resid.summary(res)
+```
+
+We can see high correlation between stocks in the same industry but small correlation between stocks in different industries. This indicates that our assumption of a diagonal covariance matrix could be unreasonable. This would call into question any inference we obtain from our model. We should formally check for this and consider an industry factor model as a possible option.
+
+f\)
+
+The test for block-diagonal matrices tests $H_0:\Sigma=\text{diag}\{\Sigma_{11},\dots,\Sigma_{kk}\}$ has test statistic:
+
+$$
+\text{LRT}=-\log\frac{\det(\hat{\Sigma})}{\det(\hat{\Sigma}_{11})\dots \det(\hat{\Sigma}_{kk})}
+$$
+
+This statistic is approximately $\chi^2_v$, with degrees of freedom $v=\frac{1}{2}(d^2-\sum_{i=1}^kd_i^2)$.
+
+```{r}
+cov.diag.test(Sig.e, Ns = Ns, n = n, p = p)
+```
+
+This test rejects the null hypothesis of block-diagonal matrices.
+
+We also test whether the full matrix is diagonal. This is an adaption of the previous test, we have $d_i=1,i=1,...,d$. Then the statistic is $-\log \det(\hat{\text{Corr(y))}}$, with degrees of freedom $v=\frac{1}{2}d(d-1)$.
+
+```{r}
+cov.diag.test(Sig.e, Ns = rep(1,N), n = n, p = p)
+```
+
+This test rejects the null hypothesis of a diagonal covariance matrix.
