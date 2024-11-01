@@ -40,7 +40,8 @@ a\)
 ```{r}
 betas = coef(fit)[-1,]
 R.Squared = c(); for(i in 1:N) R.Squared[i] = sfit[[i]]$r.squared
-coef.plot(R.Squared, coef(fit)[-1,],labs = syb)
+names(R.Squared) <- syb
+coef.plot(R.Squared, coef(fit)[-1,])
 ```
 
 From the R squared plot we see that the three factor Fama French model performance varies greatly. Let's take a look at the breakdown by industry:
@@ -187,8 +188,105 @@ Zt = apply(Yt, 2, function(u) (u-mean(u))/sd(u))
 fa = factanal(Zt, p, scores = "Bartlett", rotation = "none")
 B = t(fa$loading)
 Ft.fa = fa$scores
+R.Sq.fa = diag(t(B)%*%var(Ft.fa)%*%B)
 resid_mat = Zt - Ft.fa %*% B
 resid.summary(resid_mat)
 ```
 
-There is still correlation but it is less grouped by industry. It is less severe between particular stocks, before in the FFA-3-F model correlation was particularly strong for certain pairs. This model makes the assumption of a diagonal covariance matrix more reasonable.
+There is still correlation but it is less grouped by industry. It is less severe between particular stocks, before in the FFA-3-F model correlation was particularly strong for certain pairs. This model makes the assumption of a diagonal covariance matrix a bit more reasonable.
+
+3\)
+
+Using the standardized excess return data means we are creating an approximate factor through PCA.
+
+```{r}
+pca = prcomp(Zt)
+plot(pca)
+```
+
+From this plot I would choose three principal components. The difference of explained variance between three and four is rather small.
+
+b\)
+
+We choose $p=3$.
+
+```{r}
+p = 3
+B = t(pca$rotation[, 1:p])
+Ft.pc = pca$x[, 1:p]
+R.Sq.pc = diag(t(B)%*%diag(pca$sd[1:p]^2)%*%B)
+```
+
+c\)
+
+```{r}
+coef.plot(R.Sq.pc, B, factors = c("PCA1","PCA2","PCA3"))
+```
+
+```{r}
+compare_pca <- data.frame(
+  symbol = syb,
+  beta_1 = as.numeric(B[1,]),
+  beta_2 = as.numeric(B[2,]),
+  beta_3 = as.numeric(B[3,]),
+  industry = by_industry
+)
+```
+
+The weight on the first principal component is similar for most stocks across industries, it appears to reflect the general upward trend of each stock over time. The weights on the second principal component are positive for all stocks in the food industry, this approximates an industrial factor.
+
+```{r}
+compare_pca |> 
+  filter(beta_2 > 0)
+```
+
+In fact there are also a few healthcare companies with small positive coefficients, they all are less aggressive than the market as determined in the FFA-3 factor model.
+
+```{r}
+compare |> 
+  filter(Stock %in% c("CNC","HUM","MOH"))
+```
+
+In fact if we compute the correlation between the two coefficients we see they are strongly negatively correlated. This indicates that the $B_2$ estimates seem to be a combination of an industry and conservative factor.
+
+```{r}
+cor(compare_pca$beta_2, compare$Beta)
+```
+
+The weights $B_3$ appear to firmly be an industry factor for healthcare companies, there are six stocks with a positive coefficient five of which are healthcare companies and Microsoft (with a very small positive coefficient). Perhaps Microsoft is in this group because healthcare companies are large institutions that rely on both Windows software and database solutions.
+
+```{r}
+compare_pca |> 
+  filter(beta_3 > 0)
+```
+
+d\)
+
+With our $p = 3$ we have the following residual matrix:
+
+$$
+\hat{E}=Z-\tilde{F}\hat{B}
+$$
+
+```{r}
+lambda_diag <- diag(pca$sd[1:p]^2)
+O_matrix <- t(B)
+Ft = pca$x[,1:p]
+resid.pca = Zt - Ft %*% B
+resid.summary(resid.pca)
+```
+
+The PCA model with $p=3$ has a covariance matrix with more significant pairs than both of the previous models, correlation is less grouped within industry than the FF3 Factor model though. This indicates the assumption of a diagonal covariance matrix may not be appropriate.
+
+4\)
+
+a\)
+
+```{r}
+RSq.all <- cbind(R.Squared, R.Sq.fa, R.Sq.pc)
+RSq.plot(RSq.all)
+```
+
+The FF3 factor model is the worst out of the three we've tested. The biggest discrepancies can be seen in certain industries. Visually we can see how low $R^2$ was in the food industry in the bottom 7 stocks on the graph and how much better the two other models, which are able to factor in industry differences, perform. The PCA and FA models perform similarly for the return data.
+
+The overall takeaway is that when we are dealing with companies that belong to multiple known industries we should extend past the FF3 factor model and opt for ones that can take into account industry factors. The main concern about the PCA and FA models is their lack of interpretability but with comparisons to a default model, like the FF3 factor model, we can get an idea of what each generated factor represents.
