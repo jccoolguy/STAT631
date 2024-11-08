@@ -155,11 +155,10 @@ First we fit a t-distribution for each return series:
 n = dim(y8)[1];N = dim(y8)[2]
 nu = c(); mu = c(); lambda = c()
 for(i in 1:N){
-  start = list(m = mean(y8[, i]), s = sd(y8[,i]), df = 4)
-  fit = fitdistr(y8[, i ], "t", start, lower = c(-100, 0.0001, 0.1))
-  nu[i] = fit$est["df"]
-  mu[i] = fit$est["m"]
-  lambda[i] = fit$est["s"]
+  est = fitdistr(y8[, i], "t")$est
+  nu[i] = est["df"]
+  mu[i] = est["m"]
+  lambda[i] = est["s"]
 }
 stat = cbind(nu, mu, lambda)
 colnames(stat) = c("DF", "Mu", "Lambda")
@@ -171,7 +170,7 @@ stat
 alpha = 0.05
 S = 50000
 q.t = qt(alpha,df = nu); VaR.t = -S*(mu +lambda*q.t);
-ES.t = S*(-mu + lambda*dt(q.t,nu)/alpha*(nu*q.t^2)/(nu-1))
+ES.t = S*(-mu + lambda*dt(q.t,nu)/alpha*(nu + q.t^2)/(nu-1))
 VaR.t = VaR.t/100;ES.t = ES.t/100
 stat_2 <- cbind(VaR.t, ES.t)
 colnames(stat_2) <- c("VaR.t 0.05", "ES.t 0.05")
@@ -186,8 +185,7 @@ We use the explicit solution below again:
 
 $$
 w_t=\frac{\Sigma^{-1}\mu_{ex}}{1^T\mu_{ex}}
-$$
-The means and covariance matrix of y8 are below:
+$$ The means and covariance matrix of y8 are below:
 
 ```{r}
 y.mu = apply(y8,2,mean);y.mu
@@ -201,6 +199,139 @@ m.ex = y.mu - mu.f
 ones <- rep(1,N)
 IS = solve(y.S)
 aT = as.numeric((t(ones)%*%IS%*%m.ex))
-w8.T = 1/aT*(IS%*%m.ex)
+w8.T = 1/aT*(IS%*%m.ex)[,1]
 w8.T
+```
+
+c\)
+
+```{r}
+alpha = 0.05
+S = 500000
+
+Rho = cor(y8, method = "s")
+w = w8.T*VaR.t
+VaR = sqrt(t(w)%*%Rho%*%w)
+w = w8.T*ES.t
+ES = sqrt(t(w)%*%Rho%*%w)
+cat("5% VaR and ES of the tangency portfolio:"); c(VaR = VaR, ES = ES)
+
+
+
+```
+
+3\)
+
+a\)
+
+```{r}
+S = 50000
+alpha = c(0.05, 0.01)
+n = length(y1)
+```
+
+The Nonparametric estimate of VaR uses the sample quantile $\hat{q}(\alpha)$:
+
+$$
+\hat{\text{VaR}}^{\text{np}}(\alpha)=-S \hat{q}(\hat{\alpha})
+$$ And the Nonparametric estimate of Expected Shortfall is:
+
+$$
+\hat{\text{ES}}^{\text{np}}(\alpha)=-S\frac{\sum_{i=1}^n R_i 1\{R_i< \hat{q}\}}{\sum_{i=1}^n1\{R_i < \hat{q}(\alpha)\}}
+$$
+
+```{r}
+q = quantile(y1, alpha)
+VaR.np = -S*q; ES.np = c(-S*mean(y1[y1 < q[1]]),-S*mean(y1[y1 < q[2]]))
+VaR.np = VaR.np/100; ES.np = ES.np/100
+stats <- rbind(q,VaR.np,ES.np)
+colnames(stats) <- c("5%","1%")
+stats
+```
+
+b\)
+
+```{r warning=FALSE}
+fit.t <- fitdistr(y1, "t"); fit.t$est;
+mu = fit.t$est["m"];lambda = fit.t$est["s"];nu = fit.t$est["df"];
+
+q.t = qt(alpha, df = nu); VaR.t = -S*(mu + lambda*q.t);
+ES.t = S*(-mu + lambda*dt(q.t,nu)/alpha * (nu + q.t^2)/(nu-1));
+VaR.t = VaR.t/100; ES.t = ES.t/100
+
+
+
+stats_4 <- rbind(mu + lambda*q.t, VaR.t, ES.t)
+colnames(stats_4) <- c("5%", "1%")
+stats_4
+```
+
+```{r}
+q_grid = (1:n) / (n +1)
+theoretical_quantile <- mu + lambda*qt(q_grid, df = nu)
+qqplot(x = theoretical_quantile, y = as.numeric(y1), 
+       xlab = "Theoretical Quantile", ylab = "Sample Quantile")
+abline(lm(quantile(y1, c(0.25,.75))~
+            c(mu + lambda*qt(.25, df = nu), mu + lambda*qt(.75, df = nu))))
+```
+
+The fit is decent but struggles in the tail area.
+
+c\)
+
+The Semi-parametric estimates use:
+
+$$
+\text{VaR}(\alpha)=\text{VaR}(\alpha_0)(\frac{\alpha_0}{\alpha})^{1/\alpha}
+$$
+
+We need to estimate the tail index, we use the Hill estimator which necessitates:
+
+$$
+\log(-R_{(k)}) \approx\frac{1}{a}\log(\frac{A}{a})-\frac{1}{a}\log(\frac{k}{n})
+$$
+
+We choose from the candidate bandwidths $m = n^s,s=0.5,0.55,...,0.75,0.8$
+
+```{r}
+y_sort = sort(as.numeric(y1))
+s = seq(0.5,0.8,0.05); s
+```
+
+```{r}
+m = round(n^s); names(m) = paste0("n^",s);m
+```
+
+```{r fig.width=10, fig.height=10}
+par(mfrow = c(2,3))
+out = matrix(nrow = 3, ncol = length(m))
+rownames(out) = c("slope","se","sig.e")
+colnames(out) = paste("m", m, sep = " = ")
+
+for(i in 1:length(m)){
+  x = log((1:m[i])/n);y = log(-y_sort[1:m[i]])
+  lse = lm(y~x)
+  plot(x,y, main = m[i], xlim = c(-8,-2),ylim = c(0, 3))
+  abline(lsfit(x,y)$coef)
+  out[,i] = c(coef(lse)[2], sqrt(vcov(lse)[2,2]),0.01)
+}
+
+out = rbind(out, ahat = -1/out["slope", ]);
+round(out,5)
+```
+
+```{r}
+a = out["ahat", m == 180]
+alpha0 = 0.1
+VaR0 = -S/100*quantile(y1, alpha0)
+VaR = VaR0*(alpha0/alpha)^(1/a)
+cbind(VaR = VaR, ES = a/(a-1)*VaR)
+```
+
+```{r}
+a = out["ahat", m == 269]
+alpha0 = 0.1
+VaR0 = -S/100*quantile(y1, alpha0)
+VaR = VaR0*(alpha0/alpha)^(1/a)
+cbind(VaR = VaR, ES = a/(a-1)*VaR)
 ```
