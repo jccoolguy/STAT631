@@ -1,0 +1,206 @@
+---
+title: "STAT 631 Risk"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 11/08/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+```{r}
+load("Risk.RData")
+```
+
+1\)
+
+We use the profile likelihood method to fit the multivariate t distribution.
+
+```{r}
+library(MASS)
+library(mnormt)
+
+df = seq(1,8, 0.01)
+loglik_p = c()
+for(i in 1:length(df)){
+  fit = cov.trob(y4 , nu = df[i])
+  loglik_p[i] = sum(dmt(y4, mean = fit$center, S = fit$cov, df = df[i], log = T))
+}
+
+nu = df[which.max(loglik_p)]
+cat("The MLE of degrees of freedom:", paste(nu))
+```
+
+Our estimates are:
+
+```{r}
+est = cov.trob(y4, nu = nu, cor = T)
+names(est)
+```
+
+The MLE for the mean vector is:
+
+```{r}
+est$center
+```
+
+The MLE of the scale matrix Lambda is:
+
+```{r}
+est$cov
+```
+
+The MLE of Covariance is:
+
+```{r}
+est$cov*nu/(nu - 2)
+```
+
+b\)
+
+The tangency portfolio allowing short selling has the following explicit solution:
+
+$$
+w_t=\frac{\Sigma^{-1}\mu_{ex}}{1^T\mu_{ex}}
+$$
+
+Where $\Sigma$ is the covariance matrix:
+
+```{r}
+y.4.S = est$cov*nu/(nu - 2)
+y.4.S
+```
+
+And mu.ex is the excess return, taking the MLE of the mean vector and subtracting by the risk free rate:
+
+```{r}
+mu.f = 3.5/52
+m.ex = est$center - mu.f
+ones = rep(1,4)
+```
+
+We can now calculate $w_t$:
+
+```{r}
+IS = solve(y.4.S)
+aT = as.numeric((t(ones)%*%IS%*%m.ex))
+w4.T = 1/aT*(IS%*%m.ex)
+mu4.T = as.numeric(t(w4.T)%*%est$center)
+s4.T = sqrt(as.numeric(t(w4.T)%*%y.4.S%*%w4.T))
+cat("Tangency Portfolio for y4:"); w4.T[,1];
+cat("Portfolio return is:", mu4.T, "\t with risk", s4.T)
+
+```
+
+c)  
+
+If we choose to have 20% of assets on the risk free asset and 80% on risky assets we choose a point on the tangency line.
+
+```{r}
+w4.c = c(w4.T*.8,.2)
+names(w4.c) = c(syb4, "RF")
+w4.c
+```
+
+Then we can compute the expected return and risk easily, through:
+
+$$
+\mu_p=\mu_f+w(\hat{\mu_T}-\mu_f),\hat{\sigma}_p=w\hat{\sigma}_T
+$$
+
+```{r}
+mu.4.c = .8*mu4.T + .2*mu.f
+S.4.c = .8*s4.T
+cat("Portfolio for y4, 20% in RF:"); w4.c;
+cat("Portfolio return is:", mu.4.c, "\t with risk", S.4.c)
+```
+
+We use the following to find the distribution of the portfolio:
+
+$$
+w^TY\sim t_{\nu}(w^T\mu,w^T\Lambda w)
+$$
+
+We need to take the risk from our last step, square it and transition it to the scale parameter:
+
+```{r}
+scale.c = sqrt(S.4.c^2 * (nu - 2)/nu)
+```
+
+So the distribution of the portfolio is: $t_{\hat{\nu}}(.2415,1.311287)$ where $\hat{\nu}=$ 4.45.
+
+d\)
+
+Using this distribution we can calculate the one-week VaR and ES with S = 50000.
+
+```{r}
+S = 50000
+alpha = c(.05,0.01)
+q.t = qt(alpha, df = nu); VaR.t = -S*(mu.4.c + scale.c*q.t);
+ES.t = S*(-mu.4.c + scale.c*dt(q.t, nu)/alpha*(nu+q.t^2)/(nu-1))
+VaR.t = VaR.t/100; ES.t = ES.t/100
+output <- rbind(alpha, VaR.t, ES.t)
+output
+```
+
+2\)
+
+First we fit a t-distribution for each return series:
+
+```{r}
+n = dim(y8)[1];N = dim(y8)[2]
+nu = c(); mu = c(); lambda = c()
+for(i in 1:N){
+  start = list(m = mean(y8[, i]), s = sd(y8[,i]), df = 4)
+  fit = fitdistr(y8[, i ], "t", start, lower = c(-100, 0.0001, 0.1))
+  nu[i] = fit$est["df"]
+  mu[i] = fit$est["m"]
+  lambda[i] = fit$est["s"]
+}
+stat = cbind(nu, mu, lambda)
+colnames(stat) = c("DF", "Mu", "Lambda")
+rownames(stat) = syb8
+stat
+```
+
+```{r}
+alpha = 0.05
+S = 50000
+q.t = qt(alpha,df = nu); VaR.t = -S*(mu +lambda*q.t);
+ES.t = S*(-mu + lambda*dt(q.t,nu)/alpha*(nu*q.t^2)/(nu-1))
+VaR.t = VaR.t/100;ES.t = ES.t/100
+stat_2 <- cbind(VaR.t, ES.t)
+colnames(stat_2) <- c("VaR.t 0.05", "ES.t 0.05")
+rownames(stat_2) <- syb8
+stat_2
+
+```
+
+b\)
+
+We use the explicit solution below again:
+
+$$
+w_t=\frac{\Sigma^{-1}\mu_{ex}}{1^T\mu_{ex}}
+$$
+The means and covariance matrix of y8 are below:
+
+```{r}
+y.mu = apply(y8,2,mean);y.mu
+y.S = var(y8); y.S
+```
+
+We create m.ex by subtracting the risk free rate, which is 3.5/52 in this case. We then we the explicit solution for $w_t$ from before:
+
+```{r}
+m.ex = y.mu - mu.f
+ones <- rep(1,N)
+IS = solve(y.S)
+aT = as.numeric((t(ones)%*%IS%*%m.ex))
+w8.T = 1/aT*(IS%*%m.ex)
+w8.T
+```
