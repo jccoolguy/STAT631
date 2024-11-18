@@ -1,0 +1,48 @@
+---
+title: "STAT 631 Homework 9"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 11/20/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+```{r}
+load("HW09.RData")
+```
+
+```{r}
+alpha <- seq(0.05, 0.01, -0.01)
+S  <- 50000
+```
+
+1\)
+
+a\)
+
+The non-parametric estimates of VaR and estimated shortfall are as follows:
+
+$$
+\hat{\text{VaR}}^{\text{np}}(\alpha)=-\text{S} \times\hat{q}(\alpha)
+$$
+
+$$
+\hat{\text{ES}}^{\text{np}}(\alpha)=-\text{S} \times\frac{\sum_{i=1}^nR_i 1 \{R_i<\hat{q}(\alpha)\}}{\sum_{i=1}^n\{R_i < \hat{q}(\alpha)\}}
+$$
+
+```{r}
+q = quantile(rt, alpha)
+VaR.np = -S*q; ES.np = rep(0,5); for(i in 1:5){ES.np[i] <-  -S*mean(rt[rt < q[i]])}
+VaR.np = VaR.np/100; ES.np = ES.np/100
+
+stats_np <- rbind(q,VaR.np, ES.np)
+rownames(stats_np) <- c("Sample Quantile", "VaR.np","ES.np")
+stats_np
+```
+
+b\)
