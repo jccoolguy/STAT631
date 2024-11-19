@@ -1,0 +1,106 @@
+---
+title: "STAT 631 Homework 9"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 11/20/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+```{r}
+load("HW09.RData")
+```
+
+```{r}
+alpha <- seq(0.05, 0.01, -0.01)
+S  <- 50000
+```
+
+1\)
+
+a\)
+
+The non-parametric estimates of VaR and estimated shortfall are as follows:
+
+$$
+\hat{\text{VaR}}^{\text{np}}(\alpha)=-\text{S} \times\hat{q}(\alpha)
+$$
+
+$$
+\hat{\text{ES}}^{\text{np}}(\alpha)=-\text{S} \times\frac{\sum_{i=1}^nR_i 1 \{R_i<\hat{q}(\alpha)\}}{\sum_{i=1}^n\{R_i < \hat{q}(\alpha)\}}
+$$
+
+```{r}
+q = quantile(rt, alpha)
+VaR.np = -S*q; ES.np = rep(0,5); for(i in 1:5){ES.np[i] <-  -S*mean(rt[rt < q[i]])}
+VaR.np = VaR.np/100; ES.np = ES.np/100
+
+stats_np <- rbind(q,VaR.np, ES.np)
+rownames(stats_np) <- c("Sample Quantile", "VaR.np","ES.np")
+stats_np
+```
+
+b\)
+
+Using the Peaks over Thresholds approach we have the following conditional distribution of $y = x_t-\eta$ when $x_t>\eta$:
+
+$$
+G_{\xi,\psi(\eta)}(y)=\begin{cases} 1-(1+\frac{\xi y}{\psi(\eta)})^{-1/\xi}, & \xi\neq0 \\ 1-\text{exp}(-y/\psi(\eta)), & \xi=0\end{cases}
+$$
+
+We need to choose an appropriate threshold $\eta$, we can do this through mean excess plots. Since for a fixed $\xi$ the mean excess function is the linear function of $y=\eta-\eta_0$. In these plots we are looking for horizontal line and erring on the side of a lower threshold so we have a larger sample to estimate the parameters of G.
+
+```{r}
+library(POT)
+xt = - rt
+mrlplot(xt)
+```
+
+We limit the interval to examine:
+
+```{r}
+us = seq(0,2,.1)
+mrlplot(xt, range(us), nt = length(us))
+```
+
+We can see stability in the range of 1.3 to 1.8 especially. Before we decide we will take a look at the parameter stability plots:
+
+```{r, fig.width=8, fig.height=5}
+par(mfrow = c(1,2));us = seq(1,2,.05)
+tcplot(xt, range(us), cmax = T, nt = length(us))
+```
+
+The scale and shape parameters are stable in the interval of (1.5,1.7) range especially. So we would select $\eta_0 = 1.5$. We now calculate the MLEs of $G_{\eta,\psi(\eta)(\cdot)}$ :
+
+```{r}
+library(evir)
+mle = gpd(xt, threshold = 1.5)
+cat("Number of Exceedances:", mle$n.exceed);
+cat("estimates of scale and shape:");mle$par.ests
+```
+
+After reviewing the residual plots (which are not shared here due to it being an interactive menu) we can say this distribution fits pretty well despite struggling to maintain a straight line in the middle portion of the qqplot.
+
+With this distribution fit we can now compute value at risk and expected shortfall using the below functions:
+
+$$
+\text{VaR}_p=\eta-\frac{\psi(\eta)}{\xi}\{1-[\frac{n}{n_{\eta}}(1-p)]^{-\xi}\}
+$$
+
+$$
+\text{ES}_q=\frac{\text{VaR}_q}{1-\xi}+\frac{\psi(\eta)-\xi \eta}{1-\xi}
+$$
+
+Since our shape parameter $\xi$ is between 0 and 1.
+
+We use the riskmeasures function from library evir for these calculations:
+
+```{r}
+risk = S/100*riskmeasures(mle, p = 1 - alpha)[,2:3];
+colnames(risk) = c("VaR","ES"); rownames(risk) = c("5%","4%","3%","2%","1%");risk
+```
