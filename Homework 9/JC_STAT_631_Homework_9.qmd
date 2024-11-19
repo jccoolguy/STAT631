@@ -70,7 +70,7 @@ mrlplot(xt, range(us), nt = length(us))
 
 We can see stability in the range of 1.3 to 1.8 especially. Before we decide we will take a look at the parameter stability plots:
 
-```{r}
+```{r, fig.width=8, fig.height=5}
 par(mfrow = c(1,2));us = seq(1,2,.05)
 tcplot(xt, range(us), cmax = T, nt = length(us))
 ```
