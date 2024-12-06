@@ -1,0 +1,39 @@
+---
+title: "Data Collection"
+author: "Jack Cunningham"
+format: html
+editor: visual
+---
+
+Checking IPO date:
+
+```{r}
+library("quantmod");library("forecast")
+getSymbols("BK", from = "2009-01-01")
+head(BK, 2)
+```
+
+Good
+
+Checking missing values:
+
+```{r}
+sum(is.na(BK))
+```
+
+Good
+
+```{r}
+Yt = dailyReturn(Ad(BK), type = "log")[-1]
+Acf(Yt^2)
+```
+
+Getting daily returns:
+
+```{r}
+getSymbols("BK", from = "2009-01-01", to  = "2024-11-01")
+Yt = dailyReturn(Ad(BK), type = "log")[-1]
+colnames(Yt) = "BK"
+Yt = 100*Yt ## convert to %
+head(Yt, 2); tail(Yt, 2); dim(Yt)
+```
