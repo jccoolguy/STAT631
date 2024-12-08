@@ -1,0 +1,154 @@
+---
+title: "STAT 631 Project"
+author: "Jack Cunningham (jgavc@tamu.edu)"
+date: 12/10/2024
+date-format: short
+format:
+  pdf:
+    include-in-header:
+      - text: |
+          \usepackage{amsmath}
+editor: visual
+engine: knitr
+---
+
+The stock I chose for this project is the Bank of New York Mellon, ticker symbol BK.
+
+Loading data, helper functions and libraries:
+
+```{r, warning=FALSE, message=FALSE}
+library(quantmod)
+library(forecast)
+library(rugarch)
+load("garch.RData")
+source("GARCH_plotFunctions.R")
+source("GARCH_RFunctions.R")
+```
+
+# Introduction and Stock Performance
+
+The Bank of New York Mellon is a financial services company. It came to be after the Bank of New York, the oldest bank in the US and the largest custodian bank, and Mellon Financial Corporation, known for asset management, merged in 2007. It has many offerings and is less reliant on deal flow than an investment bank (say Goldman Sachs) and less reliant on interest rates than a consumer bank (say Citibank). A large portion of operations are providing technology solutions to asset managers and other banks.
+
+Let's take a look at BK's performance over time:
+
+```{r}
+plot(BK[,"BK.Adjusted"])
+```
+
+There are a few interesting events to point out.
+
+First, the time series begins at the start of 2009 where the financial industry was working its way out of the great financial crisis, we see the stock struggle until the beginning of 2012 where it has a strong rally for a couple of years.
+
+Second, in 2015 the company hits a snag after their accounting system failed. This particularly affected their mutual fund clients who were unable to provide NAVs to potential investors, and thus lost out on business. This issue persisted over two weeks and called into question the reliability of BK's systems.
+
+After recovering in 2016 the stock continued climbing until 2018. The uncertainty about future Fed policy, an inverted yield curve and multiple poor earnings reports led to a drop of 28% from 2018 until the start of the pandemic.
+
+During the pandemic, after a large immediate drop much like the rest of the market, the stock did very well. One reason may be that as financial companies were working remotely the demand for technology solutions (such as trading software) increased dramatically.
+
+The stock struggled in 2022, due to quick rate hikes from the FED to combat inflation. Although not too much of BNY's business is retail banking, they still have large exposure to interest rates and the inability to predict FED policy and economic outcomes hurt much of the financial industry.
+
+Currently the stock is on a strong run, similar to other banks. However an additional wrinkle helps explain BNY's performance. They have commanded investments to AI at a time where the market has rewarded companies for it. They were the first major bank to deploy an "AI Supercomputer" while collaborating with NVIDIA, they already have a history of providing technology solutions to other banks and being the largest custodian they have access to a lot of data.
+
+# Part 1)
+
+Before fitting any ARMA models we should see if the daily log returns are stationary. We can do this with a time series plot.
+
+```{r}
+plot(Yn, grid.col = "lightgray", main = "BK Daily Log Returns")
+```
+
+In this plot we can see oscillation around 0%, reflecting mean reversion. This indicates that modeling this series as a stationary process is a reasonable approach.
+
+We look for evidence of serial correlation. We can examine the auto-correlations individually to understand their structure.
+
+```{r}
+Acf(Yn, ylim = c(-.15,.15))
+```
+
+In this plot, test bounds for the null hypothesis that each autocorrelation is zero are drawn. The band is $\pm 1.96/\sqrt{n}$, so in this case $\pm1.96/\sqrt{2892}=0.03644$. There is strong autocorrelation at lag 1 and evidence of autocorrelation (although the effect is quite small) in lags 6,7 and 8.
+
+We can also test for white noise, whether all auto correlations are equal to zero. That is, for the null hypothesis:
+
+$$
+H_0: \rho_1=\dots = \rho_K=0
+$$
+
+We do this using the Box-Pierce statistic with the Ljung and Box modification which corrects bias and improves the bias for our purposes. The statistic is:
+
+$$
+Q(K)=n(n+2) \sum_{l=1}^K\frac{\hat{\rho_l}^2}{n-l}
+$$
+
+This approximates the $\chi^2_k$ distribution.
+
+The decision of K is important as it can affect the performance of the statistic, a method to help verify our results is to simply use multiple values of K and compare results.
+
+```{r}
+Ks = 2 + 3*(0:5); pv = c()
+for(i in Ks) pv = cbind(pv, Box.test(Yn, i , "L")$p.val)
+colnames(pv) = paste("K = ", Ks); rownames(pv) = "BK"; round(pv,5)
+```
+
+We can soundly reject the null hypothesis that Bank of New York Mellon returns are white noise.
+
+With the knowledge that this series can be modeled as a stationary process and evidence of autocorrelation a reasonable approach would be to use an ARMA model.
+
+An $\text{ARMA}(p,q)$ model is appropriate when a time series $Y_t$ is defined as:
+
+$$
+Y_t=c+\phi_1 Y_{t-1}+ \dots+\phi_p+\epsilon_t+\theta_1 \epsilon_{t-1} + \dots +\theta_q \epsilon_{t-q}, \quad c=\mu(1-\phi_1- \dots - \phi_p).
+$$
+
+This can also be written as:
+
+$$
+\phi(B)x_t=\theta(B) \epsilon_t
+$$
+
+Key things we need in order to assure our series is stationary, causal and invertible, is that both the AR and MA polynomials have roots within the unit circle. And there should be no common factors between the two polynomials (if we had common factors it would add error to the model and hurt our ability to use it effectively).
+
+With the concern of parameter redundancy in mind we do not rush to an auto selection tool, we instead start our model building leveraging auto correlations and partial auto correlations.
+
+The auto-correlations can help guide our selection of p and the sample partial auto-correlations can help guide our selection of q.
+
+```{r}
+par(mfrow = c(1,2))
+Acf(Yn, ylim = c(-.15,.15))
+Pacf(Yn, ylim = c(-.15,.15))
+```
+
+From these plots the most clear selection of p and q are 1 and 1 respectively. There is evidence of lags 6-8 of ACF and PACF having non-zero correlation but it is unlikely that one, the effect is significant as we are only touching correlations of about 0.05 and two, we are almost certain to run into parameter redundancy with p/q values being that high.
+
+We continue by considering models with a maximum p of 1 and a maximum q of 1, these would be the reasonable set of models.
+
+```{r}
+ps = 0:1; qs = 0:1
+AIC = BIC = matrix(nrow = length(ps), ncol = length(qs))
+rownames(AIC) = rownames(BIC) = paste0("p = ", ps)
+colnames(AIC) = colnames(BIC) = paste0("q = ", qs)
+for(i in ps){
+  for(j in qs){
+    if((i+j)<= 3){
+      arma = Arima(Yn, order = c(i,0,j))
+      AIC[i+1,j+1] = arma$aic; BIC[i+1,j+1] = arma$bic
+    }
+  }
+}
+AIC;
+BIC;
+```
+
+The AIC criterion prefers the candidate models in the following order: AR(1), ARMA(1,1), MA(1), ARMA(0,0).
+
+The BIC criterion prefers the candidate models in the following order: AR(1), MA(1), ARMA(1,1), ARMA(0,0).
+
+Since ARMA(1,1) is a competitive model, we should check for parameter redundancy to see if it can be a good candidate when we introduce ARCH/GARCH effects.
+
+```{r}
+arma_1_1 = Arima(Yn, order = c(i,0,j))
+plot_roots(coef(arma_1_1))
+```
+
+Unfortunately, this model has roots that are pretty close together indicating parameter redundancy. As such, we will remove it from consideration.
+
+After this analysis we have three models in consideration, AR(1), MA(1) and ARMA(0,0) which is white noise. Before deciding on a model we should perform residual analysis.

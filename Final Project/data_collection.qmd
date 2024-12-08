@@ -37,3 +37,16 @@ colnames(Yt) = "BK"
 Yt = 100*Yt ## convert to %
 head(Yt, 2); tail(Yt, 2); dim(Yt)
 ```
+
+Getting training set:
+
+```{r}
+ind = which(time(Yt) == "2020-06-30")
+Yn = Yt[1:ind,]; dim(Yn)
+```
+
+Saving Data:
+
+```{r}
+save.image("garch.RData")
+```
